@@ -3,6 +3,7 @@ import os
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
+from keep_alive import keep_alive  # Import the keep_alive server
 
 load_dotenv()
 
@@ -27,5 +28,7 @@ async def main():
         await bot.start(TOKEN)
 
 if __name__ == "__main__":
+    keep_alive()  # Start the Flask keep alive server in background thread
     import asyncio
     asyncio.run(main())
+    
