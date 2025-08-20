@@ -2,9 +2,10 @@
 import discord
 from discord import app_commands, ui, Interaction, Embed
 from discord.ext import commands
-from apis.clashking_api import fetch_live_legends
-from config.settings import DAY_LEADERBOARD_PAGE_SIZE, DEFAULT_COLOR, IST_OFFSET_HOURS, IST_OFFSET_MINUTES
+from config.settings import DAY_LEADERBOARD_PAGE_SIZE, IST_OFFSET_HOURS, IST_OFFSET_MINUTES
 from datetime import datetime, timedelta
+import aiohttp
+
 
 class DayLeaderboardView(ui.View):
     def __init__(self, players, color, title, page=0):
@@ -25,7 +26,7 @@ class DayLeaderboardView(ui.View):
         for i, p in enumerate(self.players[start:end], start=start + 1):
             embed.add_field(
                 name=f"{i}. {p['name']} (#{p['tag']})",
-                value=f"🏆 {p['trophies']} | 🛡️ {p.get('defense', 0)} | ⚔️ {p.get('attack', 0)}\n\u200b",
+                value=f"🏆 {p['trophies']} | Town Hall: {p.get('townhall', 'N/A')}\n\u200b",
                 inline=False
             )
         return embed
@@ -50,25 +51,30 @@ class DayLeaderboardView(ui.View):
 class DayLeaderboard(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.color = 0x118EF5  # Your hex #118ef5 converted
 
     @app_commands.command(name="leaderboarddaystart", description="Shows EOD snapshot of Legend league leaderboard")
     async def leaderboard_daystart(self, interaction: Interaction):
         await interaction.response.defer()
-        # Fetch daystart snapshot from Clash King API or from DB if cached (simplified)
-        import aiohttp
+        url = "https://api.clashk.ing/ranking/live/legends?top_ranking=1&lower_ranking=200"
         async with aiohttp.ClientSession() as session:
-            data = await fetch_live_legends(session)
-        if not data or "players" not in data:
-            await interaction.followup.send("Failed to fetch leaderboard data.", ephemeral=True)
-            return
+            try:
+                resp = await session.get(url)
+                if resp.status != 200:
+                    await interaction.followup.send("Failed to fetch leaderboard data.", ephemeral=True)
+                    return
+                data = await resp.json()
+            except Exception:
+                await interaction.followup.send("Failed to fetch leaderboard data.", ephemeral=True)
+                return
 
-        players = data["players"][:200]  # top 200
+        # data is list of player objects
+        players = data
         title = "🎯 Legend League Day-Start Leaderboard"
-        color = DEFAULT_COLOR
-        view = DayLeaderboardView(players, color, title)
+        view = DayLeaderboardView(players, self.color, title)
         await interaction.followup.send(embed=view.get_embed(), view=view)
 
 
 async def setup(bot):
     await bot.add_cog(DayLeaderboard(bot))
-      
+    
