@@ -2,9 +2,10 @@
 import discord
 from discord import app_commands, ui, Interaction, Embed
 from discord.ext import commands
-from apis.clashking_api import fetch_live_legends
-from config.settings import DAY_LEADERBOARD_PAGE_SIZE, DEFAULT_COLOR, IST_OFFSET_HOURS, IST_OFFSET_MINUTES
+from config.settings import DAY_LEADERBOARD_PAGE_SIZE, IST_OFFSET_HOURS, IST_OFFSET_MINUTES
 from datetime import datetime, timedelta
+import aiohttp
+
 
 class CurrentLeaderboardView(ui.View):
     def __init__(self, players, color, title, page=0):
@@ -25,7 +26,7 @@ class CurrentLeaderboardView(ui.View):
         for i, p in enumerate(self.players[start:end], start=start + 1):
             embed.add_field(
                 name=f"{i}. {p['name']} (#{p['tag']})",
-                value=f"🏆 {p['trophies']} | 🛡️ {p.get('defense', 0)} | ⚔️ {p.get('attack', 0)}\n\u200b",
+                value=f"🏆 {p['trophies']} | Town Hall: {p.get('townhall', 'N/A')}\n\u200b",
                 inline=False
             )
         return embed
@@ -50,26 +51,33 @@ class CurrentLeaderboardView(ui.View):
         await interaction.response.defer()
         await interaction.edit_original_response(embed=self.get_embed(), view=self)
 
+
 class CurrentLeaderboard(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.color = 0x118EF5
 
     @app_commands.command(name="leaderboardcurrent", description="Shows current live Legend league leaderboard")
     async def leaderboard_current(self, interaction: Interaction):
         await interaction.response.defer()
-        import aiohttp
+        url = "https://api.clashk.ing/ranking/live/legends?top_ranking=1&lower_ranking=200"
         async with aiohttp.ClientSession() as session:
-            data = await fetch_live_legends(session)
-        if not data or "players" not in data:
-            await interaction.followup.send("Failed to fetch leaderboard data.", ephemeral=True)
-            return
+            try:
+                resp = await session.get(url)
+                if resp.status != 200:
+                    await interaction.followup.send("Failed to fetch leaderboard data.", ephemeral=True)
+                    return
+                data = await resp.json()
+            except Exception:
+                await interaction.followup.send("Failed to fetch leaderboard data.", ephemeral=True)
+                return
 
-        players = data["players"][:200]  # top 200
+        players = data
         title = "🔥 Live Legend League Leaderboard"
-        color = DEFAULT_COLOR
-        view = CurrentLeaderboardView(players, color, title)
+        view = CurrentLeaderboardView(players, self.color, title)
         await interaction.followup.send(embed=view.get_embed(), view=view)
+
 
 async def setup(bot):
     await bot.add_cog(CurrentLeaderboard(bot))
-                        
+            
