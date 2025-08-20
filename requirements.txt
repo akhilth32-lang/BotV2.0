@@ -1,0 +1,6 @@
+discord.py>=2.0.0
+pymongo
+requests
+python-dotenv
+aiohttp
+flask
