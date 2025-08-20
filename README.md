@@ -16,3 +16,16 @@ This is an upgraded version 2.0 of a Discord bot that integrates Clash of Clans 
 
 1. Clone the repository.
 2. Create a `.env` file in the root folder with these variables:
+
+
+## Contributions
+
+Contributions and suggestions are welcome!
+
+## License
+
+MIT License
+
+---
+
+
