@@ -5,7 +5,7 @@ from discord import app_commands, ui, Interaction, Embed
 from discord.ext import commands
 import aiohttp
 from typing import List
-from config.settings import COC_API_TOKEN
+from apis.coc_api import fetch_player_data
 from config.countries import COUNTRIES
 from config.emoji_map import TOWNHALL_EMOJIS
 
