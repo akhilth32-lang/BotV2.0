@@ -3,7 +3,7 @@ from discord.ext import commands
 from discord import app_commands, Interaction, Embed
 from database.player_crud import add_or_update_player, remove_player, get_linked_players_for_user, get_player_by_tag
 from apis.coc_api import fetch_player_data
-from emoji_map import TOWNHALL_EMOJIS
+from config.emoji_map import TOWNHALL_EMOJIS
 
 class LinkCog(commands.Cog):
     def __init__(self, bot):
