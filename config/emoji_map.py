@@ -1,5 +1,5 @@
 TOWNHALL_EMOJIS = {
-    <:th17:<:emoji_63:1309505639025741875>>"
+    <:th17:"<:emoji_63:1309505639025741875>">
 }
 
 def get_townhall_emoji(level: int) -> str:
