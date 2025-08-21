@@ -4,9 +4,10 @@ import discord
 from discord import app_commands, ui, Interaction, Embed
 from discord.ext import commands
 import aiohttp
-from datetime import datetime
-from config.settings import COC_API_TOKEN
 from typing import List
+from config.settings import COC_API_TOKEN
+from config.countries import COUNTRIES
+from config.emoji_map import TOWNHALL_EMOJIS
 
 PAGE_SIZE = 25
 
@@ -21,9 +22,10 @@ class CurrentLeaderboardView(ui.View):
         start = self.page * PAGE_SIZE
         end = start + PAGE_SIZE
         for idx, player in enumerate(self.players[start:end], start=start + 1):
+            th_emoji = TOWNHALL_EMOJIS.get(player.get('townhall', 0), '')
             embed.add_field(
-                name=f"{idx}. {player['name']} (#{player['tag']})",
-                value=f"🏆 Trophies: {player['trophies']} | Town Hall: {player.get('townhall', 'N/A')}",
+                name=f"{idx}. {player['name']} {th_emoji} (#{player['tag']})",
+                value=f"🏆 {player['trophies']}",
                 inline=False,
             )
         embed.set_footer(text=f"Showing players {start + 1} to {min(end, len(self.players))} of {len(self.players)}")
@@ -47,7 +49,9 @@ class CurrentLeaderboard(commands.Cog):
         self.bot = bot
 
     async def fetch_current_leaderboard(self):
-        url = "https://api.clashofclans.com/v1/locations/global/rankings/players"
+        # For now, location is fixed to global.
+        location_id = "global"
+        url = f"https://api.clashofclans.com/v1/locations/{location_id}/rankings/players"
         headers = {
             "Authorization": f"Bearer {COC_API_TOKEN}",
             "Accept": "application/json",
