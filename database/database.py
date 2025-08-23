@@ -1,9 +1,10 @@
-from pymongo import MongoClient
-from config.settings import MONGO_URI
+# database/database.py
 
-mongo_client = MongoClient(MONGO_URI)
-db = mongo_client['clash_bot']
+from motor.motor_asyncio import AsyncIOMotorClient
+from config.settings import MONGODB_URI
 
-def get_collection(collection_name: str):
-    return db[collection_name]
-  
+client = AsyncIOMotorClient(MONGODB_URI)
+db = client['clash_bot_db']
+
+players_collection = db['players']
+leaderboard_snapshots_collection = db['leaderboard_snapshots']
