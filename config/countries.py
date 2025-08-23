@@ -19,49 +19,16 @@ COUNTRIES = [
         "countryCode": "US"
     },
     {
-        "id": 32000248,
-        "name": "United Kingdom",
-        "isCountry": True,
-        "countryCode": "GB"
-    },
-    {
-        "id": 32000094,
-        "name": "Germany",
-        "isCountry": True,
-        "countryCode": "DE"
-    },
-    {
-        "id": 32000087,
-        "name": "France",
-        "isCountry": True,
-        "countryCode": "FR"
-    },
-    {
-        "id": 32000113,
+        "id": 32000250,
         "name": "India",
         "isCountry": True,
         "countryCode": "IN"
     },
     {
-        "id": 32000166,
-        "name": "Netherlands",
+        "id": 32000251,
+        "name": "United Kingdom",
         "isCountry": True,
-        "countryCode": "NL"
+        "countryCode": "GB"
     },
-    {
-        "id": 32000000,
-        "name": "Europe",
-        "isCountry": False
-    },
-    {
-        "id": 32000001,
-        "name": "North America",
-        "isCountry": False
-    },
-    {
-        "id": 32000002,
-        "name": "South America",
-        "isCountry": False
-    },
-    # Add more countries or regions as necessary
+    # Add the rest of countries similarly, using correct IDs
 ]
