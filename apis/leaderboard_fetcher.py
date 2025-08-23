@@ -23,4 +23,4 @@ class LeaderboardFetcher:
 
     async def close(self):
         await self.api.close()
-    
+            
