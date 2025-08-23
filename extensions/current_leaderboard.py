@@ -30,15 +30,17 @@ class LeaderboardView(discord.ui.View):
         self.page = 1
         self.fetcher = LeaderboardFetcher()
         self.page_afters = {1: None}  # Tracks the 'after' tag for pagination
-    
+
     async def fetch_and_build_embed(self):
         after = self.page_afters.get(self.page)
         try:
+            # Fetch leaderboard page
             result = await self.fetcher.api.get_location_leaderboard(
                 self.location_id, limit=PAGE_SIZE, after=after
             )
             players = result.get("items", [])
 
+            # Handle empty page fallback
             if not players and self.page != 1:
                 self.page = max(1, self.page - 1)
                 after = self.page_afters.get(self.page)
@@ -47,6 +49,7 @@ class LeaderboardView(discord.ui.View):
                 )
                 players = result.get("items", [])
 
+            # Cache 'after' marker for the next or reset if invalid
             if players:
                 self.page_afters[self.page + 1] = players[-1]["tag"]
 
@@ -82,11 +85,22 @@ class LeaderboardView(discord.ui.View):
             return embed
 
         except Exception as e:
-            return create_embed(
-                title="Error",
-                description=f"⚠️ Failed to fetch leaderboard: `{e}`",
-                color=discord.Color.red()
-            )
+            err_str = str(e)
+            if "Invalid 'after' or 'before' marker" in err_str:
+                # Reset pagination state on invalid marker error
+                keys_to_remove = [k for k in self.page_afters if k >= self.page]
+                for k in keys_to_remove:
+                    self.page_afters.pop(k, None)
+                self.page_afters[1] = None
+                self.page = 1
+                # Recursive retry with reset state
+                return await self.fetch_and_build_embed()
+            else:
+                return create_embed(
+                    title="Error",
+                    description=f"⚠️ Failed to fetch leaderboard: `{err_str}`",
+                    color=discord.Color.red()
+                )
 
     async def update_message(self, interaction):
         embed = await self.fetch_and_build_embed()
@@ -99,20 +113,25 @@ class LeaderboardView(discord.ui.View):
             await self.update_message(interaction)
         else:
             await interaction.response.send_message("You are already on the first page.", ephemeral=True)
-    
+
     @discord.ui.button(label="Refresh", style=discord.ButtonStyle.secondary)
     async def refresh_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Reset to first page and clear pagination tokens
+        self.page = 1
+        self.page_afters = {1: None}
         await self.update_message(interaction)
 
     @discord.ui.button(label="Next", style=discord.ButtonStyle.primary)
     async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Cannot know max page, but if next page fetch fails, it will reset automatically in fetch_and_build_embed
         self.page += 1
         await self.update_message(interaction)
+
 
 class CurrentLeaderboard(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-    
+
     @app_commands.command(
         name="current_leaderboard",
         description="Shows the current Global Legend League leaderboard (top 200)"
@@ -125,4 +144,4 @@ class CurrentLeaderboard(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(CurrentLeaderboard(bot))
-                
+
