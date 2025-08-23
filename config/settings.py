@@ -1,15 +1,16 @@
-# config/settings.py
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
+
+# MongoDB connection string from environment variable
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+
+# Discord Bot Token
+DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN", "")
+
+# Clash of Clans API token
+COC_API_TOKEN = os.getenv("COC_API_TOKEN", "")
+
+# Other settings
 BOT_PREFIX = "!"
-
-DEFAULT_COLOR = 0x000000  # Black default embed color
-
-EMOJI_TROPHY = "<:trophy:1400826511799484476>"
-EMOJI_OFFENSE = "<:Offence:1400826628099014676>"
-EMOJI_DEFENSE = "<:emoji_9:1252010455694835743>"
-
-LEADERBOARD_PAGE_SIZE = 15
-DAY_LEADERBOARD_PAGE_SIZE = 25
-
-IST_OFFSET_HOURS = 5
-IST_OFFSET_MINUTES = 30
