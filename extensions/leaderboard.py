@@ -3,44 +3,33 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
+from discord.ui import View, button
 from database import player_crud
 from config.emoji import EMOJIS
 from utils.embed_helpers import create_embed
-from config.fonts import to_bold_gg_sans, to_regular_gg_sans
-from datetime import datetime, timezone
+from config.fonts import to_bold_gg_sans
+from config.legend_season import get_legend_day_info
 
 LEADERBOARD_PAGE_SIZE = 20
 
-# Dummy legend season info for footer, replace with your actual season data
-LEGEND_SEASONS_2025 = [
-    {"start": datetime(2025, 7, 1, tzinfo=timezone.utc), "end": datetime(2025, 7, 29, tzinfo=timezone.utc), "duration_days": 28}
-]
 
-def get_legend_day_info():
-    now = datetime.now(timezone.utc)
-    for season in LEGEND_SEASONS_2025:
-        if season["start"] <= now < season["end"]:
-            elapsed = (now - season["start"]).days + 1
-            total = season["duration_days"]
-            season_month = season["start"].strftime("%Y-%m")
-            local_now = now.astimezone()
-            return elapsed, total, season_month, local_now
-    # fallback
-    local_now = now.astimezone()
-    return None, None, None, local_now
-
-class LeaderboardView(discord.ui.View):
-    def __init__(self, sorted_players, leaderboard_name):
-        super().__init__(timeout=600)
-        self.sorted_players = sorted_players
-        self.page = 1
-        self.leaderboard_name = leaderboard_name
-        self.total_pages = (len(sorted_players) + LEADERBOARD_PAGE_SIZE - 1) // LEADERBOARD_PAGE_SIZE
+class LeaderboardView(View):
+    def __init__(self, cog, interaction, players, color, day, name, page=1):
+        super().__init__(timeout=120)  # 2 min timeout
+        self.cog = cog
+        self.interaction = interaction
+        self.players = players
+        self.color = color
+        self.day = day
+        self.name = name
+        self.page = page
+        self.total_pages = (len(players) + LEADERBOARD_PAGE_SIZE - 1) // LEADERBOARD_PAGE_SIZE
 
     def build_embed(self):
+        # Paginate players
         start = (self.page - 1) * LEADERBOARD_PAGE_SIZE
         end = start + LEADERBOARD_PAGE_SIZE
-        page_players = self.sorted_players[start:end]
+        page_players = self.players[start:end]
 
         description_lines = []
         rank_offset = start
@@ -58,82 +47,84 @@ class LeaderboardView(discord.ui.View):
             offense_display = f"{EMOJIS['offense']} {offense_change:+}/{offense_attacks}"
             defense_display = f"{EMOJIS['defense']} {defense_change:+}/{defense_defends}"
 
-            line = f"{rank}. {name} ({tag})\n   🏆 {trophies} | {offense_display} | {defense_display}"
+            # Add small spacing between players
+            line = (
+                f"{rank}. {name} ({tag})\n"
+                f"   🏆 {trophies} | {offense_display} | {defense_display}\n"
+            )
             description_lines.append(line)
-            description_lines.append("")  # Small space between players
 
         embed = create_embed(
-            title=f"Linked Players Leaderboard - {self.leaderboard_name}",
+            title=self.name,
             description="\n".join(description_lines),
-            color=discord.Color.dark_gray()
+            color=discord.Color(int(self.color.replace('#', ''), 16))
         )
 
-        # Footer showing legend league season day info
-        elapsed, total, season_month, local_now = get_legend_day_info()
-        if elapsed and total and season_month:
-            footer_text = f"Day {elapsed}/{total} ({season_month}) | Today at {local_now.strftime('%I:%M %p')}"
-        else:
-            footer_text = f"Day info unavailable | {local_now.strftime('%m/%d/%Y %I:%M %p')}"
+        # Legend day info (current or chosen snapshot)
+        day_info = get_legend_day_info(self.day)
+        embed.set_footer(
+            text=f"Day {day_info['day_number']}/{day_info['total_days']} "
+                 f"({day_info['season']}) | Today at {discord.utils.format_dt(discord.utils.utcnow(), 't')}"
+        )
 
-        embed.set_footer(text=footer_text + f" | Page {self.page}/{self.total_pages}")
         return embed
 
     async def update_message(self, interaction):
         embed = self.build_embed()
         await interaction.response.edit_message(embed=embed, view=self)
 
-    @discord.ui.button(label="Previous", style=discord.ButtonStyle.primary)
-    async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @button(label="⬅ Previous", style=discord.ButtonStyle.secondary)
+    async def previous_page(self, interaction: discord.Interaction, button: discord.ui.Button):
         if self.page > 1:
             self.page -= 1
-            await self.update_message(interaction)
-        else:
-            await interaction.response.send_message("You are already on the first page.", ephemeral=True)
-
-    @discord.ui.button(label="Refresh", style=discord.ButtonStyle.secondary)
-    async def refresh_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
-        # You could refetch from DB here if desired
         await self.update_message(interaction)
 
-    @discord.ui.button(label="Next", style=discord.ButtonStyle.primary)
-    async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @button(label="🔄 Refresh", style=discord.ButtonStyle.success)
+    async def refresh(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Refetch latest players
+        all_players = await player_crud.get_all_linked_players()
+        self.players = sorted(all_players, key=lambda p: p.get('trophies', 0), reverse=True)
+        self.total_pages = (len(self.players) + LEADERBOARD_PAGE_SIZE - 1) // LEADERBOARD_PAGE_SIZE
+        await self.update_message(interaction)
+
+    @button(label="Next ➡", style=discord.ButtonStyle.secondary)
+    async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
         if self.page < self.total_pages:
             self.page += 1
-            await self.update_message(interaction)
-        else:
-            await interaction.response.send_message("You are already on the last page.", ephemeral=True)
+        await self.update_message(interaction)
+
 
 class Leaderboard(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="leaderboard", description="Show leaderboard of all linked Clash of Clans player accounts")
-    @app_commands.describe(
-        leaderboard_name="Enter leaderboard name to filter (optional)"
+    @app_commands.command(
+        name="leaderboard",
+        description="Show leaderboard of all linked Clash of Clans player accounts"
     )
-    async def leaderboard(self, interaction: discord.Interaction, leaderboard_name: str = "All"):
+    @app_commands.describe(
+        color="Embed color in hex (e.g. #000000 for black, default black)",
+        day="Legend league day snapshot to view (default current day)",
+        name="Leaderboard title (default 'Linked Players Leaderboard')"
+    )
+    async def leaderboard(
+        self,
+        interaction: discord.Interaction,
+        color: str = "#000000",
+        day: int = 0,
+        name: str = "Linked Players Leaderboard"
+    ):
         await interaction.response.defer()
 
-        # Fetch all linked players sorted by trophies descending
+        # Fetch linked players sorted by trophies
         all_players = await player_crud.get_all_linked_players()
+        sorted_players = sorted(all_players, key=lambda p: p.get('trophies', 0), reverse=True)
 
-        # Optional filtering by leaderboard name if you have such field in your DB (adjust as needed)
-        if leaderboard_name != "All":
-            filtered_players = [p for p in all_players if p.get("leaderboard_name", "").lower() == leaderboard_name.lower()]
-        else:
-            filtered_players = all_players
-
-        sorted_players = sorted(filtered_players, key=lambda p: p.get('trophies', 0), reverse=True)
-
-        if not sorted_players:
-            await interaction.followup.send("No players found for the specified leaderboard.")
-            return
-
-        view = LeaderboardView(sorted_players, leaderboard_name)
+        # Build interactive view
+        view = LeaderboardView(self, interaction, sorted_players, color, day, name, page=1)
         embed = view.build_embed()
         await interaction.followup.send(embed=embed, view=view)
 
+
 async def setup(bot):
     await bot.add_cog(Leaderboard(bot))
-            
