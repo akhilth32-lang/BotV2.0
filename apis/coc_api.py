@@ -50,4 +50,4 @@ class ClashOfClansAPI:
             else:
                 data = await resp.text()
                 raise Exception(f"Failed to get leaderboard for {location_id}: {resp.status} - {data}")
-                
+
