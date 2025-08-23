@@ -1,116 +1,129 @@
-# extensions/current_leaderboard.py
+# extensions/leaderboard.py
 
 import discord
 from discord import app_commands
 from discord.ext import commands
-from apis.leaderboard_fetcher import LeaderboardFetcher
-from config import emoji
-from config.legend_season import LEGEND_SEASONS_2025
+from discord.ui import View, button
+from database import player_crud
+from config.emoji import EMOJIS
 from utils.embed_helpers import create_embed
 from config.fonts import to_bold_gg_sans
-from datetime import datetime, timezone
+from config.legend_season import get_legend_day_info
 
-PAGE_SIZE = 50  # Number of players per page
+LEADERBOARD_PAGE_SIZE = 20
 
-def get_current_season_day():
-    now = datetime.now(timezone.utc)
-    for season in LEGEND_SEASONS_2025:
-        if season["start"] <= now < season["end"]:
-            elapsed = (now - season["start"]).days + 1
-            total = season["duration_days"]
-            season_month = season["start"].strftime("%Y-%m")
-            return elapsed, total, season_month, now
-    return None, None, None, now
 
-class LeaderboardView(discord.ui.View):
-    def __init__(self, bot, location_id="global"):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.location_id = location_id
-        self.page = 1
-        self.fetcher = LeaderboardFetcher()
-        self.cached_players = []  # Cache full leaderboard players for pagination
+class LeaderboardView(View):
+    def __init__(self, cog, interaction, players, color, day, name, page=1):
+        super().__init__(timeout=120)  # 2 min timeout
+        self.cog = cog
+        self.interaction = interaction
+        self.players = players
+        self.color = color
+        self.day = day
+        self.name = name
+        self.page = page
+        self.total_pages = (len(players) + LEADERBOARD_PAGE_SIZE - 1) // LEADERBOARD_PAGE_SIZE
 
-    async def fetch_and_cache_leaderboard(self):
-        """Fetch full leaderboard bulk once and cache it."""
-        self.cached_players = await self.fetcher.fetch_full_leaderboard(self.location_id)
-
-    def build_embed(self, page):
-        """Paginate from cached_players locally for fast response."""
-        start = (page - 1) * PAGE_SIZE
-        end = start + PAGE_SIZE
-        players = self.cached_players[start:end]
+    def build_embed(self):
+        # Paginate players
+        start = (self.page - 1) * LEADERBOARD_PAGE_SIZE
+        end = start + LEADERBOARD_PAGE_SIZE
+        page_players = self.players[start:end]
 
         description_lines = []
-        for idx, player in enumerate(players, start=start + 1):
-            name = to_bold_gg_sans(player.get("name", "Unknown"))
-            tag = player.get("tag", "")
+        rank_offset = start
+        for idx, player in enumerate(page_players, start=1):
+            rank = rank_offset + idx
+            name = to_bold_gg_sans(player.get("player_name", "Unknown"))
+            tag = player.get("player_tag", "N/A")
             trophies = player.get("trophies", 0)
-            offense = f"{emoji.EMOJIS['offense']} +0/0"
-            defense = f"{emoji.EMOJIS['defense']} -0/0"
-            description_lines.append(f"{idx}. {name} 🏆 {trophies} {offense} {defense} ({tag})")
+
+            offense_change = player.get("offense_trophies_change", 0)
+            offense_attacks = player.get("offense_attacks", 0)
+            defense_change = player.get("defense_trophies_change", 0)
+            defense_defends = player.get("defense_defends", 0)
+
+            offense_display = f"{EMOJIS['offense']} {offense_change:+}/{offense_attacks}"
+            defense_display = f"{EMOJIS['defense']} {defense_change:+}/{defense_defends}"
+
+            # Add small spacing between players
+            line = (
+                f"{rank}. {name} ({tag})\n"
+                f"   🏆 {trophies} | {offense_display} | {defense_display}\n"
+            )
+            description_lines.append(line)
 
         embed = create_embed(
-            title=f"Global Legend League Current Leaderboard — Page {page}",
-            description="\n".join(description_lines) if description_lines else "No data found.",
-            color=discord.Color.dark_gray()
+            title=self.name,
+            description="\n".join(description_lines),
+            color=discord.Color(int(self.color.replace('#', ''), 16))
         )
 
-        elapsed, total, season_month, now = get_current_season_day()
-        now_local = now.astimezone()
-        today_midnight = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
+        # Legend day info
+        day_info = get_legend_day_info(self.day)
+        embed.set_footer(
+            text=f"Day {day_info['day_number']}/{day_info['total_days']} "
+                 f"({day_info['season']}) | Today at {discord.utils.format_dt(discord.utils.utcnow(), 't')}"
+        )
 
-        if elapsed and total and season_month:
-            if now_local > today_midnight:
-                footer_str = f"Day {elapsed}/{total} ({season_month}) | Today at {now_local.strftime('%I:%M %p')}"
-            else:
-                footer_str = f"Day {elapsed}/{total} ({season_month}) | {now_local.strftime('%m/%d/%Y %I:%M %p')}"
-        else:
-            footer_str = f"Date unknown | {datetime.now().strftime('%m/%d/%Y %I:%M %p')}"
-
-        embed.set_footer(text=footer_str)
         return embed
 
     async def update_message(self, interaction):
-        embed = self.build_embed(self.page)
+        embed = self.build_embed()
         await interaction.response.edit_message(embed=embed, view=self)
 
-    @discord.ui.button(label="Previous", style=discord.ButtonStyle.primary)
-    async def previous_button(self, interaction, button):
+    @button(label="⬅ Previous", style=discord.ButtonStyle.secondary)
+    async def previous_page(self, interaction: discord.Interaction, button: discord.ui.Button):
         if self.page > 1:
             self.page -= 1
-            await self.update_message(interaction)
-        else:
-            await interaction.response.send_message("You are already on the first page.", ephemeral=True)
-
-    @discord.ui.button(label="Refresh", style=discord.ButtonStyle.secondary)
-    async def refresh_button(self, interaction, button):
-        await interaction.response.defer()
-        await self.fetch_and_cache_leaderboard()  # Refresh cached data
-        self.page = 1
         await self.update_message(interaction)
 
-    @discord.ui.button(label="Next", style=discord.ButtonStyle.primary)
-    async def next_button(self, interaction, button):
-        max_pages = (len(self.cached_players) - 1) // PAGE_SIZE + 1
-        if self.page < max_pages:
-            self.page += 1
-            await self.update_message(interaction)
-        else:
-            await interaction.response.send_message("You are already on the last page.", ephemeral=True)
+    @button(label="🔄 Refresh", style=discord.ButtonStyle.success)
+    async def refresh(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Refetch latest players
+        all_players = await player_crud.get_all_linked_players()
+        self.players = sorted(all_players, key=lambda p: p.get('trophies', 0), reverse=True)
+        self.total_pages = (len(self.players) + LEADERBOARD_PAGE_SIZE - 1) // LEADERBOARD_PAGE_SIZE
+        await self.update_message(interaction)
 
-class CurrentLeaderboard(commands.Cog):
+    @button(label="Next ➡", style=discord.ButtonStyle.secondary)
+    async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.page < self.total_pages:
+            self.page += 1
+        await self.update_message(interaction)
+
+
+class Leaderboard(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="current_leaderboard", description="Shows the current Global Legend League leaderboard (top 200)")
-    async def current_leaderboard(self, interaction):
-        await interaction.response.defer(thinking=True)
-        view = LeaderboardView(self.bot)
-        await view.fetch_and_cache_leaderboard()
-        embed = view.build_embed(view.page)
+    @app_commands.command(
+        name="leaderboard",
+        description="Show leaderboard of all linked Clash of Clans player accounts"
+    )
+    @app_commands.describe(
+        color="Embed color in hex (e.g. #000000 for black, default black)",
+        day="Legend league day snapshot to view (default current day)",
+        name="Leaderboard title (default 'Linked Players Leaderboard')"
+    )
+    async def leaderboard(
+        self,
+        interaction: discord.Interaction,
+        color: str = "#000000",
+        day: int = 0,
+        name: str = "Linked Players Leaderboard"
+    ):
+        await interaction.response.defer()
+
+        # Fetch linked players sorted by trophies
+        all_players = await player_crud.get_all_linked_players()
+        sorted_players = sorted(all_players, key=lambda p: p.get('trophies', 0), reverse=True)
+
+        view = LeaderboardView(self, interaction, sorted_players, color, day, name, page=1)
+        embed = view.build_embed()
         await interaction.followup.send(embed=embed, view=view)
 
+
 async def setup(bot):
-    await bot.add_cog(CurrentLeaderboard(bot))
-        
+    await bot.add_cog(Leaderboard(bot))
