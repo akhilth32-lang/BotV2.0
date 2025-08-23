@@ -1,84 +1,72 @@
 # extensions/leaderboard.py
+
 import discord
-from discord import app_commands, ui, Interaction, Embed
+from discord import app_commands
 from discord.ext import commands
-from database.player_crud import get_all_players
-from config.settings import (
-    DEFAULT_COLOR, LEADERBOARD_PAGE_SIZE,
-    EMOJI_TROPHY, EMOJI_OFFENSE, EMOJI_DEFENSE,
-    IST_OFFSET_HOURS, IST_OFFSET_MINUTES
-)
-from datetime import datetime, timedelta
+from database import player_crud
+from config.emoji import EMOJIS
+from utils.embed_helpers import create_embed
+from config.fonts import to_bold_gg_sans, to_regular_gg_sans
 
-class LeaderboardView(ui.View):
-    def __init__(self, players, color, title, page=0):
-        super().__init__(timeout=None)
-        self.players = players
-        self.color = color
-        self.title = title
-        self.page = page
-
-    def get_embed(self):
-        start = self.page * LEADERBOARD_PAGE_SIZE
-        end = start + LEADERBOARD_PAGE_SIZE
-        embed = Embed(title=self.title, color=self.color)
-
-        now_ist = datetime.utcnow() + timedelta(hours=IST_OFFSET_HOURS, minutes=IST_OFFSET_MINUTES)
-        embed.set_footer(text=f"Last refreshed: {now_ist.strftime('%d-%m-%Y %I:%M %p')}")
-
-        for i, p in enumerate(self.players[start:end], start=start + 1):
-            embed.add_field(
-                name=f"{i}. {p['name']} (#{p['player_tag']})",
-                value=f"{EMOJI_TROPHY} {p['trophies']} | "
-                      f"{EMOJI_OFFENSE} +{p.get('offense_trophies', 0)}/{p.get('offense_attacks', 0)} | "
-                      f"{EMOJI_DEFENSE} -{p.get('defense_trophies', 0)}/{p.get('defense_defenses', 0)}\n\u200b",
-                inline=False
-            )
-        return embed
-
-    async def update_message(self, interaction: Interaction):
-        await interaction.response.defer()
-        self.players = get_all_players()
-        await interaction.edit_original_response(embed=self.get_embed(), view=self)
-
-    @ui.button(label="⬅️ Previous", style=discord.ButtonStyle.secondary)
-    async def prev_page(self, interaction: Interaction, button: ui.Button):
-        if self.page > 0:
-            self.page -= 1
-            await self.update_message(interaction)
-
-    @ui.button(label="➡️ Next", style=discord.ButtonStyle.secondary)
-    async def next_page(self, interaction: Interaction, button: ui.Button):
-        if (self.page + 1) * LEADERBOARD_PAGE_SIZE < len(self.players):
-            self.page += 1
-            await self.update_message(interaction)
-
-    @ui.button(label="🔄 Refresh", style=discord.ButtonStyle.primary)
-    async def refresh(self, interaction: Interaction, button: ui.Button):
-        await self.update_message(interaction)
-
+LEADERBOARD_PAGE_SIZE = 20
 
 class Leaderboard(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="leaderboard", description="Shows the leaderboard")
+    @app_commands.command(name="leaderboard", description="Show leaderboard of all linked Clash of Clans player accounts")
     @app_commands.describe(
-        color="Embed color in hex (default black), e.g. 0x000000",
-        name="Leaderboard title"
+        page="Page number to view (default 1)",
+        color="Embed color in hex (e.g. #000000 for black, default black)",
+        day="Legend league day snapshot to view (default current day)"
     )
-    async def leaderboard(self, interaction: Interaction, color: str = "0x000000", name: str = "🏆 Leaderboard"):
+    async def leaderboard(self, interaction: discord.Interaction, page: int = 1, color: str = "#000000", day: int = 0):
         await interaction.response.defer()
-        try:
-            color_value = int(color, 16)
-        except Exception:
-            color_value = DEFAULT_COLOR
 
-        players = get_all_players()
+        # Fetch linked players sorted by trophies descending
+        all_players = await player_crud.get_all_linked_players()
+        # Sort by trophies descending
+        sorted_players = sorted(all_players, key=lambda p: p.get('trophies', 0), reverse=True)
 
-        view = LeaderboardView(players, color_value, name)
-        await interaction.followup.send(embed=view.get_embed(), view=view)
+        total_pages = (len(sorted_players) + LEADERBOARD_PAGE_SIZE - 1) // LEADERBOARD_PAGE_SIZE
+        if page < 1:
+            page = 1
+        if page > total_pages:
+            page = total_pages
 
+        # Paginate users
+        start = (page - 1) * LEADERBOARD_PAGE_SIZE
+        end = start + LEADERBOARD_PAGE_SIZE
+        page_players = sorted_players[start:end]
+
+        description_lines = []
+        rank_offset = start
+        for idx, player in enumerate(page_players, start=1):
+            rank = rank_offset + idx
+            name = to_bold_gg_sans(player.get("player_name", "Unknown"))
+            tag = player.get("player_tag", "N/A")
+            trophies = player.get("trophies", 0)
+
+            offense_change = player.get("offense_trophies_change", 0)
+            offense_attacks = player.get("offense_attacks", 0)
+            defense_change = player.get("defense_trophies_change", 0)
+            defense_defends = player.get("defense_defends", 0)
+
+            offense_display = f"{EMOJIS['offense']} {offense_change:+}/{offense_attacks}"
+            defense_display = f"{EMOJIS['defense']} {defense_change:+}/{defense_defends}"
+
+            line = f"{rank}. {name} ({tag})\n   🏆 {trophies} | {offense_display} | {defense_display}"
+            description_lines.append(line)
+
+        embed = create_embed(
+            title="Linked Players Leaderboard",
+            description="\n".join(description_lines),
+            color=discord.Color(int(color.replace('#', ''), 16))
+        )
+        embed.set_footer(text=f"Page {page}/{total_pages}")
+
+        await interaction.followup.send(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(Leaderboard(bot))
+            
