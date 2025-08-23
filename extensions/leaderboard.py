@@ -1,4 +1,4 @@
-# extensions/leaderboard.py
+# extensions/leaderboard.py 
 
 import discord
 from discord import app_commands
