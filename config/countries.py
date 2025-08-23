@@ -1,5 +1,7 @@
 # config/countries.py
 
+# Location IDs and details for Clash of Clans leaderboard API paging
+
 COUNTRIES = [
     {
         "id": "global",
@@ -19,16 +21,54 @@ COUNTRIES = [
         "countryCode": "US"
     },
     {
-        "id": 32000250,
+        "id": 32000248,
+        "name": "United Kingdom",
+        "isCountry": True,
+        "countryCode": "GB"
+    },
+    {
+        "id": 32000094,
+        "name": "Germany",
+        "isCountry": True,
+        "countryCode": "DE"
+    },
+    {
+        "id": 32000087,
+        "name": "France",
+        "isCountry": True,
+        "countryCode": "FR"
+    },
+    {
+        "id": 32000113,
         "name": "India",
         "isCountry": True,
         "countryCode": "IN"
     },
     {
-        "id": 32000251,
-        "name": "United Kingdom",
+        "id": 32000166,
+        "name": "Netherlands",
         "isCountry": True,
-        "countryCode": "GB"
+        "countryCode": "NL"
     },
-    # Add the rest of countries similarly, using correct IDs
+    {
+        "id": 32000000,
+        "name": "Europe",
+        "isCountry": False
+    },
+    {
+        "id": 32000001,
+        "name": "North America",
+        "isCountry": False
+    },
+    {
+        "id": 32000002,
+        "name": "South America",
+        "isCountry": False
+    },
+    {
+        "id": 32000053,
+        "name": "Ceuta and Melilla",
+        "isCountry": True,
+        "countryCode": "EA"
+    }
 ]
