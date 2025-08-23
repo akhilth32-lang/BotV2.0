@@ -46,7 +46,7 @@ class ClashOfClansAPI:
                 data = await resp.json()
                 return data.get("status") == "ok"
 
-    async def get_location_leaderboard(self, location_id: str, limit=30, after=None):
+    async def get_location_leaderboard(self, location_id: str, limit=200, after=None):
         """Get leaderboard for a given location id."""
         url = f"{BASE_URL}/locations/{location_id}/rankings/players?limit={limit}"
         if after:
