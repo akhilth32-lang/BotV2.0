@@ -41,7 +41,10 @@ class ClashOfClansAPI:
 
         async with aiohttp.ClientSession(headers=HEADERS) as session:
             async with session.post(url, json=json_data) as resp:
-                return resp.status == 200
+                if resp.status != 200:
+                    return False
+                data = await resp.json()
+                return data.get("status") == "ok"
 
     async def get_location_leaderboard(self, location_id: str, limit=30, after=None):
         """Get leaderboard for a given location id."""
