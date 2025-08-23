@@ -1,41 +1,81 @@
-from datetime import datetime, timedelta, timezone
+# config/legend_season.py
 
-# Legend League season reset time: Last Monday of every month at 05:00 UTC
-# Players reset to 5000 trophies at this time.
-# Season length is either 28 or 35 days depending on the month.
+from datetime import datetime
 
-# Predefined 2025 season reset dates in UTC as per last Mondays and 5:00 UTC reset.
-SEASONS_2025 = [
-    {"season": 1, "start": datetime(2025, 1, 27, 5, 0, 0, tzinfo=timezone.utc), "length_days": 28},
-    {"season": 2, "start": datetime(2025, 2, 24, 5, 0, 0, tzinfo=timezone.utc), "length_days": 35},
-    {"season": 3, "start": datetime(2025, 3, 31, 5, 0, 0, tzinfo=timezone.utc), "length_days": 28},
-    {"season": 4, "start": datetime(2025, 4, 28, 5, 0, 0, tzinfo=timezone.utc), "length_days": 28},
-    {"season": 5, "start": datetime(2025, 5, 26, 5, 0, 0, tzinfo=timezone.utc), "length_days": 35},
-    {"season": 6, "start": datetime(2025, 6, 30, 5, 0, 0, tzinfo=timezone.utc), "length_days": 28},
-    {"season": 7, "start": datetime(2025, 7, 28, 5, 0, 0, tzinfo=timezone.utc), "length_days": 28},
-    {"season": 8, "start": datetime(2025, 8, 25, 5, 0, 0, tzinfo=timezone.utc), "length_days": 35},
-    {"season": 9, "start": datetime(2025, 9, 29, 5, 0, 0, tzinfo=timezone.utc), "length_days": 28},
-    {"season": 10, "start": datetime(2025, 10, 27, 5, 0, 0, tzinfo=timezone.utc), "length_days": 28},
-    {"season": 11, "start": datetime(2025, 11, 24, 5, 0, 0, tzinfo=timezone.utc), "length_days": 35},
-    {"season": 12, "start": datetime(2025, 12, 29, 5, 0, 0, tzinfo=timezone.utc), "length_days": 28},
+# Legend League 2025 Official Season Schedule (all times UTC)
+# Seasons reset on last Monday of the month at 05:00 UTC
+
+LEGEND_SEASONS_2025 = [
+    {
+        "season_number": 1,
+        "start": datetime(2025, 1, 27, 5, 0),
+        "end": datetime(2025, 2, 24, 4, 59),
+        "duration_days": 28
+    },
+    {
+        "season_number": 2,
+        "start": datetime(2025, 2, 24, 5, 0),
+        "end": datetime(2025, 3, 31, 4, 59),
+        "duration_days": 35
+    },
+    {
+        "season_number": 3,
+        "start": datetime(2025, 3, 31, 5, 0),
+        "end": datetime(2025, 4, 28, 4, 59),
+        "duration_days": 28
+    },
+    {
+        "season_number": 4,
+        "start": datetime(2025, 4, 28, 5, 0),
+        "end": datetime(2025, 5, 26, 4, 59),
+        "duration_days": 28
+    },
+    {
+        "season_number": 5,
+        "start": datetime(2025, 5, 26, 5, 0),
+        "end": datetime(2025, 6, 30, 4, 59),
+        "duration_days": 35
+    },
+    {
+        "season_number": 6,
+        "start": datetime(2025, 6, 30, 5, 0),
+        "end": datetime(2025, 7, 28, 4, 59),
+        "duration_days": 28
+    },
+    {
+        "season_number": 7,
+        "start": datetime(2025, 7, 28, 5, 0),
+        "end": datetime(2025, 8, 25, 4, 59),
+        "duration_days": 28
+    },
+    {
+        "season_number": 8,
+        "start": datetime(2025, 8, 25, 5, 0),
+        "end": datetime(2025, 9, 29, 4, 59),
+        "duration_days": 35
+    },
+    {
+        "season_number": 9,
+        "start": datetime(2025, 9, 29, 5, 0),
+        "end": datetime(2025, 10, 27, 4, 59),
+        "duration_days": 28
+    },
+    {
+        "season_number": 10,
+        "start": datetime(2025, 10, 27, 5, 0),
+        "end": datetime(2025, 11, 24, 4, 59),
+        "duration_days": 28
+    },
+    {
+        "season_number": 11,
+        "start": datetime(2025, 11, 24, 5, 0),
+        "end": datetime(2025, 12, 29, 4, 59),
+        "duration_days": 35
+    },
+    {
+        "season_number": 12,
+        "start": datetime(2025, 12, 29, 5, 0),
+        "end": datetime(2026, 1, 26, 4, 59),
+        "duration_days": 28
+    }
 ]
-
-def get_current_season(now_utc: datetime = None):
-    """
-    Return current season number and day number within the season based on current datetime in UTC.
-    """
-    now_utc = now_utc or datetime.utcnow().replace(tzinfo=timezone.utc)
-
-    for i, season in enumerate(SEASONS_2025):
-        start = season["start"]
-        length = season["length_days"]
-        end = start + timedelta(days=length)
-        if start <= now_utc < end:
-            day = (now_utc - start).days + 1
-            return season["season"], day
-
-    # If not in any season period, return last or first as appropriate
-    if now_utc < SEASONS_2025[0]["start"]:
-        return None, 0
-    return SEASONS_2025[-1]["season"], (now_utc - SEASONS_2025[-1]["start"]).days + 1
-
