@@ -1,79 +1,59 @@
 # extensions/current_leaderboard.py
 
 import discord
-from discord import app_commands, ui, Interaction, Embed
+from discord import app_commands
 from discord.ext import commands
-import aiohttp
-from typing import List
-from apis.coc_api import fetch_player_data
-from config.countries import COUNTRIES
-from config.emoji_map import TOWNHALL_EMOJIS
+from apis.leaderboard_fetcher import LeaderboardFetcher
+from config import countries, emoji, fonts
+from utils.embed_helpers import create_embed
+from config.fonts import to_bold_gg_sans, to_regular_gg_sans
 
-PAGE_SIZE = 25
-
-class CurrentLeaderboardView(ui.View):
-    def __init__(self, players: List[dict], page=0):
-        super().__init__(timeout=None)
-        self.players = players
-        self.page = page
-
-    def get_embed(self) -> Embed:
-        embed = Embed(title="🔥 Current Legend League Leaderboard (Top 200)", color=0x118EF5)
-        start = self.page * PAGE_SIZE
-        end = start + PAGE_SIZE
-        for idx, player in enumerate(self.players[start:end], start=start + 1):
-            th_emoji = TOWNHALL_EMOJIS.get(player.get('townhall', 0), '')
-            embed.add_field(
-                name=f"{idx}. {player['name']} {th_emoji} (#{player['tag']})",
-                value=f"🏆 {player['trophies']}",
-                inline=False,
-            )
-        embed.set_footer(text=f"Showing players {start + 1} to {min(end, len(self.players))} of {len(self.players)}")
-        return embed
-
-    @ui.button(label="⬅️ Previous", style=discord.ButtonStyle.secondary)
-    async def prev_page(self, interaction: Interaction, button: ui.Button):
-        if self.page > 0:
-            self.page -= 1
-            await interaction.response.edit_message(embed=self.get_embed(), view=self)
-
-    @ui.button(label="➡️ Next", style=discord.ButtonStyle.secondary)
-    async def next_page(self, interaction: Interaction, button: ui.Button):
-        if (self.page + 1) * PAGE_SIZE < len(self.players):
-            self.page += 1
-            await interaction.response.edit_message(embed=self.get_embed(), view=self)
-
+PAGE_SIZE = 30
 
 class CurrentLeaderboard(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.fetcher = LeaderboardFetcher()
 
-    async def fetch_current_leaderboard(self):
-        # For now, location is fixed to global.
-        location_id = "global"
-        url = f"https://api.clashofclans.com/v1/locations/{location_id}/rankings/players"
-        headers = {
-            "Authorization": f"Bearer {COC_API_TOKEN}",
-            "Accept": "application/json",
-        }
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=headers) as resp:
-                if resp.status != 200:
-                    return None
-                data = await resp.json()
-                return data.get("items", [])[:200]
-
-    @app_commands.command(name="leaderboardcurrent", description="Shows current official Clash of Clans Legend League leaderboard")
-    async def leaderboard_current(self, interaction: Interaction):
+    @app_commands.command(name="current_leaderboard", description="Shows the current Global Legend League leaderboard (top 200)")
+    @app_commands.describe(page="Leaderboard page number (default 1)")
+    async def current_leaderboard(self, interaction: discord.Interaction, page: int = 1):
         await interaction.response.defer()
-        players = await self.fetch_current_leaderboard()
-        if not players:
-            await interaction.followup.send("Failed to fetch leaderboard data.", ephemeral=True)
+
+        location_id = "global"
+        try:
+            data = await self.fetcher.fetch_leaderboard_page(location_id, page)
+        except Exception as e:
+            await interaction.followup.send(f"Error fetching leaderboard: {str(e)}", ephemeral=True)
             return
 
-        view = CurrentLeaderboardView(players)
-        await interaction.followup.send(embed=view.get_embed(), view=view)
+        if not data:
+            await interaction.followup.send("No leaderboard data found.", ephemeral=True)
+            return
+
+        description_lines = []
+        start_rank = (page - 1) * PAGE_SIZE + 1
+        for idx, player in enumerate(data, start=start_rank):
+            name = to_bold_gg_sans(player.get("name", "Unknown"))
+            tag = player.get("tag", "")
+            trophies = player.get("trophies", 0)
+            # Using live stats for offence and defence not available from API here, placeholders
+            offense = f"{emoji.EMOJIS['offense']} +0/0"
+            defense = f"{emoji.EMOJIS['defense']} -0/0"
+            line = f"{idx}. {name} 🏆{trophies} {offense} {defense} ({tag})"
+            description_lines.append(line)
+
+        embed = create_embed(
+            title="Global Legend League Current Leaderboard",
+            description="\n".join(description_lines),
+            color=discord.Color.dark_theme()
+        )
+        embed.set_footer(text=f"Page {page} — Use buttons to navigate, refresh data")
+
+        # Send embed with buttons (refresh, previous, next)
+        # You will implement your button logic in the commands
+        await interaction.followup.send(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(CurrentLeaderboard(bot))
-        
+    
