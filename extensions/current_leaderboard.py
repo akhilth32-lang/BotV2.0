@@ -10,7 +10,7 @@ from utils.embed_helpers import create_embed
 from config.fonts import to_bold_gg_sans
 from datetime import datetime, timezone
 
-PAGE_SIZE = 50
+PAGE_SIZE = 30
 
 def get_current_season_day():
     now = datetime.now(timezone.utc)
