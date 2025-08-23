@@ -30,23 +30,18 @@ class ClashOfClansAPI:
                 data = await resp.text()
                 raise Exception(f"Failed to get player {player_tag}: {resp.status} - {data}")
 
-    async def verify_player_api_token(self, player_tag: str, token: str):
+    async def verify_player_api_token(self, player_tag: str, player_token: str):
         """
-        Verify player by checking player tag existence using developer API key only.
-        The player's API token is accepted and stored but NOT verified here,
-        because the official Clash of Clans API does not support player token verification directly.
+        Verify player token for player tag by making POST request
+        to the official verifytoken endpoint with the developer API token.
         """
-        # Just verify player tag exists
-        try:
-            player_tag = player_tag.strip('#').upper()
-            url = f"{BASE_URL}/players/%23{player_tag}"
-            async with self.session.get(url) as resp:
-                if resp.status == 200:
-                    return True
-                else:
-                    return False
-        except Exception:
-            return False
+        player_tag = player_tag.strip('#').upper()
+        url = f"{BASE_URL}/players/%23{player_tag}/verifytoken"
+        json_data = {"token": player_token}
+
+        async with aiohttp.ClientSession(headers=HEADERS) as session:
+            async with session.post(url, json=json_data) as resp:
+                return resp.status == 200
 
     async def get_location_leaderboard(self, location_id: str, limit=30, after=None):
         """Get leaderboard for a given location id."""
