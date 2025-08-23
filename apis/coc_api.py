@@ -1,39 +1,22 @@
-# apis/coc_api.py
-import aiohttp
-import os
+import coc
+import asyncio
+from config.settings import COC_API_TOKEN
 
-COC_API_TOKEN = os.getenv("COC_API_TOKEN")  # Make sure this env var is set
+class CocClient:
+    def __init__(self):
+        self.client = None
 
-API_BASE_URL = "https://api.clashofclans.com/v1"
+    async def start(self):
+        if self.client is None:
+            self.client = coc.Client(api_key=COC_API_TOKEN)
 
-headers = {
-    "Authorization": f"Bearer {COC_API_TOKEN}"
-}
+    async def get_player(self, player_tag):
+        if self.client is None:
+            await self.start()
+        return await self.client.get_player(player_tag)
 
-async def fetch_player_data(session: aiohttp.ClientSession, player_tag: str):
-    """
-    Fetch player data from official Clash of Clans API by player tag.
-    Returns player data dict or None on failure.
-    """
-    # Tags should start with '#'
-    if not player_tag.startswith("#"):
-        player_tag = "#" + player_tag
-    # encode '#' properly for URL
-    encoded_tag = player_tag.replace("#", "%23")
-
-    url = f"{API_BASE_URL}/players/{encoded_tag}"
-    try:
-        async with session.get(url, headers=headers) as response:
-            if response.status == 200:
-                data = await response.json()
-                return data
-            elif response.status == 404:
-                print(f"Player {player_tag} not found.")
-                return None
-            else:
-                print(f"CoC API returned status {response.status} for player {player_tag}")
-                return None
-    except Exception as e:
-        print(f"Error fetching CoC player data: {e}")
-        return None
-        
+    async def close(self):
+        if self.client:
+            await self.client.close()
+            self.client = None
+            
