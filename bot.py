@@ -1,35 +1,37 @@
+# bot.py
+
 import os
 import discord
 from discord.ext import commands
+from dotenv import load_dotenv
+
 from keep_alive import keep_alive
+from extensions import link, unlink, link_profile, leaderboard, current_leaderboard, day_start_leaderboard
+
+load_dotenv()
+TOKEN = os.getenv('DISCORD_TOKEN')
 
 intents = discord.Intents.default()
-bot = commands.Bot(command_prefix="/", intents=intents)
+bot = commands.Bot(command_prefix='!', intents=intents)
 
+# Load extensions (cogs)
 initial_extensions = [
-    "extensions.link",
-    "extensions.unlink",
-    "extensions.link_profile",
-    "extensions.leaderboard",
-    "extensions.current_leaderboard",
-    "extensions.day_start_leaderboard",
-    "tasks.background_updater",
-    "tasks.daily_snapshot_reset",
+    'extensions.link',
+    'extensions.unlink',
+    'extensions.link_profile',
+    'extensions.leaderboard',
+    'extensions.current_leaderboard',
+    'extensions.day_start_leaderboard',
 ]
+
+if __name__ == '__main__':
+    for ext in initial_extensions:
+        bot.load_extension(ext)
 
 @bot.event
 async def on_ready():
-    print(f"Logged in as {bot.user} (ID: {bot.user.id})")
-    await bot.tree.sync()
-    print("Slash commands synced")
+    print(f'Logged in as {bot.user} (ID: {bot.user.id})')
+    print('------')
 
-async def load_extensions():
-    for ext in initial_extensions:
-        await bot.load_extension(ext)
-
-if __name__ == "__main__":
-    keep_alive()
-    import asyncio
-    asyncio.run(load_extensions())
-    bot.run(os.environ["BOT_TOKEN"])
-    
+keep_alive()  # Start the keep alive web server for Render + uptimerobot
+bot.run(TOKEN)
