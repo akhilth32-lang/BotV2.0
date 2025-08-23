@@ -4,17 +4,18 @@ import os
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
+import asyncio
 
 from keep_alive import keep_alive
-from extensions import link, unlink, link_profile, leaderboard, current_leaderboard, day_start_leaderboard
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 
 intents = discord.Intents.default()
+intents.message_content = True  # Enable if you process message content commands
+
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-# Load extensions (cogs)
 initial_extensions = [
     'extensions.link',
     'extensions.unlink',
@@ -24,14 +25,26 @@ initial_extensions = [
     'extensions.day_start_leaderboard',
 ]
 
-if __name__ == '__main__':
+async def load_extensions():
     for ext in initial_extensions:
-        bot.load_extension(ext)
+        try:
+            await bot.load_extension(ext)
+            print(f'Loaded extension {ext}')
+        except Exception as e:
+            print(f'Failed to load extension {ext}: {e}')
 
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user} (ID: {bot.user.id})')
     print('------')
+    # Optionally sync slash commands here if using discord.py v2 app commands
+    # await bot.tree.sync()
 
-keep_alive()  # Start the keep alive web server for Render + uptimerobot
-bot.run(TOKEN)
+async def main():
+    keep_alive()  # Start keepalive server
+    await load_extensions()
+    await bot.start(TOKEN)
+
+if __name__ == '__main__':
+    asyncio.run(main())
+            
