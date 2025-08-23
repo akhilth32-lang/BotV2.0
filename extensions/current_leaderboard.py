@@ -32,8 +32,8 @@ class LeaderboardView(discord.ui.View):
         self.page_afters = {1: None}  # Tracks the 'after' tag for pagination
     
     async def fetch_and_build_embed(self):
+        after = self.page_afters.get(self.page)
         try:
-            after = self.page_afters.get(self.page)
             result = await self.fetcher.api.get_location_leaderboard(
                 self.location_id, limit=PAGE_SIZE, after=after
             )
@@ -125,3 +125,4 @@ class CurrentLeaderboard(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(CurrentLeaderboard(bot))
+                
