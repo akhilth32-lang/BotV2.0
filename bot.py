@@ -1,5 +1,3 @@
-# bot.py
-
 import os
 import discord
 from discord.ext import commands
@@ -37,8 +35,8 @@ async def load_extensions():
 async def on_ready():
     print(f'Logged in as {bot.user} (ID: {bot.user.id})')
     print('------')
-    # Optionally sync slash commands here if using discord.py v2 app commands
-    # await bot.tree.sync()
+    await bot.tree.sync()  # Sync slash commands globally
+    print('Slash commands synced.')
 
 async def main():
     keep_alive()  # Start keepalive server
@@ -47,4 +45,4 @@ async def main():
 
 if __name__ == '__main__':
     asyncio.run(main())
-            
+    
