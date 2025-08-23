@@ -29,23 +29,27 @@ class LeaderboardView(discord.ui.View):
         self.location_id = location_id
         self.page = 1
         self.fetcher = LeaderboardFetcher()
-        self.page_afters = {1: None}  # Tracks the 'after' tag for each page to paginate properly
+        self.page_afters = {1: None}  # for Clash of Clans API pagination
     
     async def fetch_and_build_embed(self):
         after = self.page_afters.get(self.page)
-        
-        # Fetch leaderboard page using proper 'after' token for pagination 
-        result = await self.fetcher.api.get_location_leaderboard(self.location_id, limit=PAGE_SIZE, after=after)
-        players = result.get("items", [])
-
-        if not players and self.page != 1:
-            # If empty page (e.g. requested beyond last page), go back 1 page
-            self.page = max(1, self.page - 1)
-            after = self.page_afters.get(self.page)
+        try:
             result = await self.fetcher.api.get_location_leaderboard(self.location_id, limit=PAGE_SIZE, after=after)
             players = result.get("items", [])
+        except Exception as e:
+            players = []
+            print(f"Error fetching leaderboard page: {e}")
 
-        # Cache the last player's tag as 'after' token for next page
+        if not players and self.page != 1:
+            self.page = max(1, self.page - 1)
+            after = self.page_afters.get(self.page)
+            try:
+                result = await self.fetcher.api.get_location_leaderboard(self.location_id, limit=PAGE_SIZE, after=after)
+                players = result.get("items", [])
+            except Exception as e:
+                players = []
+                print(f"Error fetching leaderboard fallback: {e}")
+
         if players:
             self.page_afters[self.page + 1] = players[-1]["tag"]
 
@@ -67,9 +71,10 @@ class LeaderboardView(discord.ui.View):
         )
 
         elapsed, total, season_month, now = get_current_season_day()
+        now_local = now.astimezone()
+
+        today_midnight = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
         if elapsed and total and season_month:
-            now_local = now.astimezone()
-            today_midnight = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
             if now_local > today_midnight:
                 footer_str = f"Day {elapsed}/{total} ({season_month}) | Today at {now_local.strftime('%I:%M %p')}"
             else:
@@ -81,23 +86,28 @@ class LeaderboardView(discord.ui.View):
         return embed
 
     async def update_message(self, interaction):
-        embed = await self.fetch_and_build_embed()
-        await interaction.response.edit_message(embed=embed, view=self)
+        try:
+            embed = await self.fetch_and_build_embed()
+            await interaction.response.edit_message(embed=embed, view=self)
+        except Exception as e:
+            print(f"Error editing message: {e}")
+            if not interaction.response.is_done():
+                await interaction.response.send_message(f"Error updating leaderboard: {e}", ephemeral=True)
 
     @discord.ui.button(label="Previous", style=discord.ButtonStyle.primary)
-    async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def previous_button(self, interaction, button):
         if self.page > 1:
             self.page -= 1
             await self.update_message(interaction)
         else:
-            await interaction.response.send_message("You are already on the first page.", ephemeral=True)
-    
+            await interaction.response.send_message("Already at the first page", ephemeral=True)
+
     @discord.ui.button(label="Refresh", style=discord.ButtonStyle.secondary)
-    async def refresh_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def refresh_button(self, interaction, button):
         await self.update_message(interaction)
 
     @discord.ui.button(label="Next", style=discord.ButtonStyle.primary)
-    async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def next_button(self, interaction, button):
         self.page += 1
         await self.update_message(interaction)
 
@@ -106,12 +116,17 @@ class CurrentLeaderboard(commands.Cog):
         self.bot = bot
     
     @app_commands.command(name="current_leaderboard", description="Shows the current Global Legend League leaderboard (top 200)")
-    async def current_leaderboard(self, interaction: discord.Interaction):
-        await interaction.response.defer()
-        view = LeaderboardView(self.bot)
-        embed = await view.fetch_and_build_embed()
-        await interaction.followup.send(embed=embed, view=view)
+    async def current_leaderboard(self, interaction):
+        try:
+            await interaction.response.defer()
+            view = LeaderboardView(self.bot)
+            embed = await view.fetch_and_build_embed()
+            await interaction.followup.send(embed=embed, view=view)
+        except Exception as e:
+            print(f"Error sending leaderboard: {e}")
+            if not interaction.response.is_done():
+                await interaction.response.send_message(f"Error: {e}", ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(CurrentLeaderboard(bot))
-        
+    
