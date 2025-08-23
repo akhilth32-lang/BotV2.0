@@ -18,6 +18,21 @@ class ClashOfClansAPI:
     async def close(self):
         await self.session.close()
 
+    async def get_location_leaderboard(self, location_id: str, limit=200, after=None):
+        url = f"{BASE_URL}/locations/{location_id}/rankings/players?limit={limit}"
+        if after:
+            url += f"&after={after}"
+        async with self.session.get(url) as resp:
+            if resp.status == 429:
+                retry_after = float(resp.headers.get('Retry-After', '1'))
+                await asyncio.sleep(retry_after)
+                return await self.get_location_leaderboard(location_id, limit, after)
+            if resp.status == 200:
+                return await resp.json()
+            else:
+                data = await resp.text()
+                raise Exception(f"Failed to get leaderboard for {location_id}: {resp.status} - {data}")
+
     async def get_player(self, player_tag: str):
         player_tag = player_tag.strip('#').upper()
         url = f"{BASE_URL}/players/%23{player_tag}"
@@ -32,22 +47,10 @@ class ClashOfClansAPI:
         player_tag = player_tag.strip('#').upper()
         url = f"{BASE_URL}/players/%23{player_tag}/verifytoken"
         json_data = {"token": player_token}
-
         async with aiohttp.ClientSession(headers=HEADERS) as session:
             async with session.post(url, json=json_data) as resp:
                 if resp.status != 200:
                     return False
                 data = await resp.json()
                 return data.get("status") == "ok"
-
-    async def get_location_leaderboard(self, location_id: str, limit=50, after=None):
-        url = f"{BASE_URL}/locations/{location_id}/rankings/players?limit={limit}"
-        if after:
-            url += f"&after={after}"
-        async with self.session.get(url) as resp:
-            if resp.status == 200:
-                return await resp.json()
-            else:
-                data = await resp.text()
-                raise Exception(f"Failed to get leaderboard for {location_id}: {resp.status} - {data}")
-
+                
