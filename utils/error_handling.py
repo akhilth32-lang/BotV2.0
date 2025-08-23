@@ -1,19 +1,14 @@
 # utils/error_handling.py
-import logging
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler("bot_errors.log"),
-        logging.StreamHandler()
-    ]
-)
+import discord
+from config.emoji import EMOJIS
+from utils.embed_helpers import create_embed
 
-def log_error(error: Exception, context: str = ""):
-    logging.error(f"Error in {context}: {error}", exc_info=True)
-
-def log_info(message: str):
-    logging.info(message)
-  
+async def send_error_message(interaction: discord.Interaction, message: str):
+    embed = create_embed(
+        title=f"{EMOJIS['failed']} Error",
+        description=message,
+        color=discord.Color.red()
+    )
+    await interaction.followup.send(embed=embed, ephemeral=True)
+    
