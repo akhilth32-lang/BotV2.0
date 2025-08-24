@@ -10,11 +10,9 @@ import random
 
 # Replace these URLs with your actual hosted profile photo URLs
 PROFILE_PHOTOS = [
-    "https://example.com/profile1.png",
-    "https://example.com/profile2.png",
-    "https://example.com/profile3.png",
-    "https://example.com/profile4.png",
-    "https://example.com/profile5.png",
+    "https://cdn.discordapp.com/attachments/1383022223043858472/1409231248232288436/profile1.png?ex=68aca05f&is=68ab4edf&hm=cb5498d78dcc18a62591bb871981af42bc4d9396f2a5db85e355045505f107d1&",
+    "https://cdn.discordapp.com/attachments/1383022223043858472/1409231248521433098/profile3.png?ex=68aca05f&is=68ab4edf&hm=fadd276f07cff3b8e57a756afe055ddd696b4895dc469839219069476b8b5399&",
+    "https://cdn.discordapp.com/attachments/1383022223043858472/1409231248844656640/profile2.png?ex=68aca05f&is=68ab4edf&hm=c74c7e104b38fb2024592f187fdbbbd754714ad078f7a7a84da162f6f84baf44&",
 ]
 
 class LinkProfile(commands.Cog):
@@ -59,7 +57,7 @@ class LinkProfile(commands.Cog):
 
             # Format line like:
             # 1. <:th17:1409068038107697255> • **AKHIL**   |<:legend:1399752114653233322> 5321  (#8UQQL8VU8)
-            line = f"{th_emoji} • **{name}**   | {legend_league_emoji} {trophies}  ({tag})"
+            line = f"{th_emoji} • **{name}** | {legend_league_emoji} {trophies}  ({tag})"
             description_lines.append(line)
 
         embed = create_embed(
