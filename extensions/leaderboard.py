@@ -69,7 +69,8 @@ class LeaderboardView(discord.ui.View):
                 f"{defense_emoji} `-{abs(defense_change)}/{defense_defends}`"
             )
 
-            description_lines.append(f"{line1}\n{line2}")
+            # Add half-space (blank line) between players
+            description_lines.append(f"{line1}\n{line2}\n")
 
         leaderboard_emoji = EMOJIS.get("leaderboard", "")
         embed = create_embed(
@@ -97,7 +98,7 @@ class LeaderboardView(discord.ui.View):
         embed.set_footer(text=footer_text)
         return embed
 
-    @discord.ui.button(label="Previous", style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="Previous", style=discord.ButtonStyle.secondary)  # Black
     async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         if self.current_page > 0:
             self.current_page -= 1
@@ -106,7 +107,7 @@ class LeaderboardView(discord.ui.View):
         else:
             await interaction.response.send_message("Already at the first page.", ephemeral=True)
 
-    @discord.ui.button(label="Next", style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="Next", style=discord.ButtonStyle.secondary)  # Black
     async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         max_page = (len(self.players) - 1) // LEADERBOARD_PAGE_SIZE
         if self.current_page < max_page:
@@ -116,7 +117,7 @@ class LeaderboardView(discord.ui.View):
         else:
             await interaction.response.send_message("Already at the last page.", ephemeral=True)
 
-    @discord.ui.button(label="Refresh", style=discord.ButtonStyle.secondary)
+    @discord.ui.button(label="Refresh", style=discord.ButtonStyle.secondary)  # Black
     async def refresh_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.load_players()
         self.current_page = 0
