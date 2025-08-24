@@ -62,8 +62,8 @@ class LeaderboardView(discord.ui.View):
             line = (
                 f"{idx}. {name} ({tag})   "
                 f"{trophy_emoji} {trophies} | "
-                f"`{offense_emoji} {offense_change:+}/{offense_attacks}` | "
-                f"`{defense_emoji} -{abs(defense_change)}/{defense_defends}`"
+                f"{offense_emoji} `{offense_change:+}/{offense_attacks}` | "
+                f"{defense_emoji} `-{abs(defense_change)}/{defense_defends}`"
             )
             description_lines.append(line)
 
