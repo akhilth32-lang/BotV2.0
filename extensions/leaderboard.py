@@ -58,7 +58,7 @@ class LeaderboardView(discord.ui.View):
             header = f"{name} ({tag})"
             stats_line = f"🏆 {trophies} | {EMOJIS['offense']} {offense_change:+}/{offense_attacks} | {EMOJIS['defense']} {defense_change:-}/{defense_defends}"
             # Add a small blank line after each player for spacing
-            description_lines.append(f"{idx}. {header}\n{stats_line}\n")
+            description_lines.append(f"{idx}. {header}\n{stats_line}\n\n")
 
         embed = create_embed(
             title=f"{self.leaderboard_name} Leaderboard",
