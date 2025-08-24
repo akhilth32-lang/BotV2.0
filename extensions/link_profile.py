@@ -10,9 +10,11 @@ import random
 
 # Replace these URLs with your actual hosted profile photo URLs
 PROFILE_PHOTOS = [
-    "profile1.png",
-    "profile2.png",
-    "profile3.png",
+    "https://example.com/profile1.png",
+    "https://example.com/profile2.png",
+    "https://example.com/profile3.png",
+    "https://example.com/profile4.png",
+    "https://example.com/profile5.png",
 ]
 
 class LinkProfile(commands.Cog):
@@ -33,7 +35,7 @@ class LinkProfile(commands.Cog):
         if not linked_players:
             embed = create_embed(
                 title=f"{EMOJIS['warning']} No Linked Accounts",
-                description=f"No Clash of Clans accounts linked to {user.mention}.({user.id})",
+                description=f"No Clash of Clans accounts linked to {user.mention}.",
                 color=discord.Color.dark_theme()
             )
             await interaction.followup.send(embed=embed, ephemeral=True)
@@ -57,11 +59,11 @@ class LinkProfile(commands.Cog):
 
             # Format line like:
             # 1. <:th17:1409068038107697255> • **AKHIL**   |<:legend:1399752114653233322> 5321  (#8UQQL8VU8)
-            line = f"{th_emoji} • **{name}**  | {legend_league_emoji} {trophies}  ({tag})"
+            line = f"{th_emoji} • **{name}**   | {legend_league_emoji} {trophies}  ({tag})"
             description_lines.append(line)
 
         embed = create_embed(
-            title=f"Player Profile - {user.display_name}",
+            title=f"Player Profile - {user.display_name} ({user.id})",
             description="\n".join(description_lines),
             color=discord.Color.dark_theme()
         )
