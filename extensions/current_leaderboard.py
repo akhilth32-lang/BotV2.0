@@ -8,9 +8,11 @@ from config.legend_season import LEGEND_SEASONS_2025
 from utils.embed_helpers import create_embed
 from config.fonts import to_bold_gg_sans
 from datetime import datetime, timezone
+from config.countries import COUNTRIES
 
 PAGE_SIZE = 50  # Show 50 players per page
 MAX_PLAYERS = 200  # Limit to top 200
+
 
 def get_current_season_day():
     now = datetime.now(timezone.utc)
@@ -23,16 +25,47 @@ def get_current_season_day():
     return None, None, None, now
 
 
-def format_rank(rank: int) -> str:
-    """Return styled rank numbers for top 3"""
+def format_player_line(rank: int, player: dict) -> str:
+    """Return formatted leaderboard line for a player"""
+    name = to_bold_gg_sans(player.get("name", "Unknown"))
+    clan = player.get("clan", {}).get("name", "")
+    trophies = player.get("trophies", 0)
+
+    # Highlight top 3 ranks
     if rank == 1:
-        return "**`1.`**"  # gold look using bold + code style
+        prefix = "🥇"
     elif rank == 2:
-        return "**`2.`**"  # silver style
+        prefix = "🥈"
     elif rank == 3:
-        return "**`3.`**"  # bronze style
+        prefix = "🥉"
     else:
-        return f"`{rank}.`"  # normal gray numbers
+        prefix = "🏆"
+
+    line = f"{prefix} {trophies} | {name}"
+    if clan:
+        line += f"\n   *{clan}*"
+    return line
+
+
+class CountrySelect(discord.ui.Select):
+    def __init__(self, view):
+        options = [
+            discord.SelectOption(label=c["name"], value=str(c["id"]))
+            for c in COUNTRIES
+        ]
+        super().__init__(
+            placeholder="Select a country/region...",
+            options=options,
+            min_values=1,
+            max_values=1
+        )
+        self.parent_view = view
+
+    async def callback(self, interaction: discord.Interaction):
+        self.parent_view.location_id = self.values[0]
+        self.parent_view.players_cache = []  # clear cache for new country
+        self.parent_view.page = 1
+        await self.parent_view.update_message(interaction)
 
 
 class LeaderboardView(discord.ui.View):
@@ -43,6 +76,9 @@ class LeaderboardView(discord.ui.View):
         self.page = 1
         self.fetcher = LeaderboardFetcher()
         self.players_cache = []  # Cache all 200 players
+
+        # Add country selector
+        self.add_item(CountrySelect(self))
 
     async def fetch_all_players(self):
         """Fetch top 200 players from API once and store in cache."""
@@ -64,24 +100,19 @@ class LeaderboardView(discord.ui.View):
             end_index = start_index + PAGE_SIZE
             players = self.players_cache[start_index:end_index]
 
-            description_lines = []
-            for idx, player in enumerate(players, start=start_index + 1):
-                rank_str = format_rank(idx)
+            description_lines = [
+                format_player_line(idx, player)
+                for idx, player in enumerate(players, start=start_index + 1)
+            ]
 
-                name = to_bold_gg_sans(player.get("name", "Unknown"))
-                clan = player.get("clan", {}).get("name", "")
-                trophies = player.get("trophies", 0)
-
-                line = f"{rank_str} {name}"
-                if clan:
-                    line += f"\n   *{clan}*"
-                line += f"\n   🏆 {trophies}\n"
-
-                description_lines.append(line)
+            country_name = next(
+                (c["name"] for c in COUNTRIES if str(c["id"]) == str(self.location_id)),
+                "Global"
+            )
 
             embed = create_embed(
-                title="Global Legend League Current Leaderboard",
-                description="\n".join(description_lines) if description_lines else "No data found.",
+                title=f"{country_name} Legend League Current Leaderboard",
+                description="\n\n".join(description_lines) if description_lines else "No data found.",
                 color=discord.Color.dark_gray()
             )
 
@@ -93,7 +124,7 @@ class LeaderboardView(discord.ui.View):
             else:
                 footer_str = f"Date unknown | {datetime.now().strftime('%m/%d/%Y %I:%M %p')}"
 
-            total_pages = (len(self.players_cache) // PAGE_SIZE)
+            total_pages = max(1, (len(self.players_cache) // PAGE_SIZE))
             embed.set_footer(text=f"{footer_str} • Page {self.page}/{total_pages}")
             return embed
 
@@ -138,7 +169,7 @@ class CurrentLeaderboard(commands.Cog):
 
     @app_commands.command(
         name="current_leaderboard",
-        description="Shows the current Global Legend League leaderboard (top 200, 50 per page)"
+        description="Shows the current Legend League leaderboard (top 200, 50 per page)"
     )
     async def current_leaderboard(self, interaction: discord.Interaction):
         await interaction.response.defer(thinking=True)
