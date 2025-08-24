@@ -6,7 +6,7 @@ from discord.ext import commands
 from database import player_crud
 from config.emoji import EMOJIS
 from utils.embed_helpers import create_embed
-from config.fonts import to_bold_gg_sans, to_regular_gg_sans
+
 
 class LinkProfile(commands.Cog):
     def __init__(self, bot):
@@ -18,34 +18,30 @@ class LinkProfile(commands.Cog):
         await interaction.response.defer()
 
         user = discord_user or interaction.user
-
         linked_players = await player_crud.get_linked_players_by_discord(user.id)
 
         if not linked_players:
             embed = create_embed(
                 title=f"{EMOJIS['warning']} No Linked Accounts",
                 description=f"No Clash of Clans accounts linked to {user.mention}.",
-                color=discord.Color.orange()
+                color=discord.Color.dark_theme()
             )
             await interaction.followup.send(embed=embed, ephemeral=True)
             return
 
         description_lines = []
         for player in linked_players:
-            name = to_bold_gg_sans(player.get("player_name", "Unknown"))
+            name = player.get("player_name", "Unknown")
             tag = player.get("player_tag", "N/A")
-            trophies = player.get("trophies", 0)
-            offense = player.get("offense_trophies_change", 0)
-            offense_attacks = player.get("offense_attacks", 0)
-            defense = player.get("defense_trophies_change", 0)
-            defense_defends = player.get("defense_defends", 0)
+            discord_id = player.get("discord_id")
 
-            offense_display = f"{EMOJIS['offense']} +{offense}/{offense_attacks if offense_attacks != 0 else 0}"
-            defense_display = f"{EMOJIS['defense']} {defense}/{defense_defends if defense_defends != 0 else 0}"
+            # Townhall emoji (fallback if missing)
+            th_level = player.get("townHallLevel", "?")
+            th_emoji = EMOJIS.get(f"th{th_level}", "🏠")
 
             line = (
-                f"{name} ({tag})\n"
-                f"🏆 {trophies} | {offense_display} | {defense_display}\n"
+                f"{th_emoji} **{name}** ({tag})\n"
+                f"🔗 Linked to Discord ID: `{discord_id}`\n"
             )
             description_lines.append(line)
 
@@ -55,6 +51,7 @@ class LinkProfile(commands.Cog):
             color=discord.Color.dark_theme()
         )
         await interaction.followup.send(embed=embed, ephemeral=False)
+
 
 async def setup(bot):
     await bot.add_cog(LinkProfile(bot))
