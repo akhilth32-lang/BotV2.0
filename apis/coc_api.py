@@ -1,6 +1,7 @@
 # apis/coc_api.py
 
 import aiohttp
+import asyncio
 from config.settings import COC_API_TOKEN
 
 BASE_URL = "https://api.clashofclans.com/v1"
@@ -44,13 +45,12 @@ class ClashOfClansAPI:
                 raise Exception(f"Failed to get player {player_tag}: {resp.status} - {data}")
 
     async def verify_player_api_token(self, player_tag: str, player_token: str):
+        """Verify player API token without saving it to database."""
         player_tag = player_tag.strip('#').upper()
         url = f"{BASE_URL}/players/%23{player_tag}/verifytoken"
         json_data = {"token": player_token}
-        async with aiohttp.ClientSession(headers=HEADERS) as session:
-            async with session.post(url, json=json_data) as resp:
-                if resp.status != 200:
-                    return False
-                data = await resp.json()
-                return data.get("status") == "ok"
-                
+        async with self.session.post(url, json=json_data) as resp:
+            if resp.status != 200:
+                return False
+            data = await resp.json()
+            return data.get("status") == "ok"
