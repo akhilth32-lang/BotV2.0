@@ -47,13 +47,13 @@ class Leaderboard(commands.Cog):
             tag = player.get("player_tag", "N/A")
             trophies = player.get("trophies", 0)
 
-            offense_change = player.get("offense_trophies_change", 0)
+            offense_change = player.get("offense_trophies", 0)
             offense_attacks = player.get("offense_attacks", 0)
-            defense_change = player.get("defense_trophies_change", 0)
-            defense_defends = player.get("defense_defends", 0)
+            defense_change = player.get("defense_trophies", 0)
+            defense_defends = player.get("defense_defenses", 0)
 
             offense_display = f"{EMOJIS['offense']} {offense_change:+}/{offense_attacks}"
-            defense_display = f"{EMOJIS['defense']} {defense_change:+}/{defense_defends}"
+            defense_display = f"{EMOJIS['defense']} {defense_change:-}/{defense_defends}"
 
             line = f"{rank}. {name} ({tag})\n   🏆 {trophies} | {offense_display} | {defense_display}"
             description_lines.append(line)
