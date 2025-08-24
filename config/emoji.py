@@ -4,7 +4,7 @@
 
 EMOJIS = {
     "townhall": "<:th17:1409068038107697255>",  # replace with your emoji ID
-    "tick": "<:tick:123456789012345679>",
+    "tick": "<:tick:1409185392292397191>",
     "cancel": "<:cancel:123456789012345680>",
     "failed": "<:failed:123456789012345681>",
     "trophy": "<:trophy:123456789012345682>",
