@@ -5,13 +5,14 @@ from bson.objectid import ObjectId
 from typing import List, Optional
 import datetime
 
+
 async def add_linked_player(discord_id: int, player_tag: str, player_name: str, townhall: int = 0, trophies: int = 0):
     """Add a new linked player for a Discord user.
     Prevents duplicate linking of the same player_tag.
     """
     player_tag = player_tag.upper()
 
-    # Check if already linked (globally)
+    # Check if already linked (globally, not unlinked)
     existing = await players_collection.find_one({"player_tag": player_tag, "unlinked": False})
     if existing:
         return None  # Already linked
@@ -97,15 +98,17 @@ async def get_all_linked_players(limit: int = 2000):
     return await cursor.to_list(length=limit)
 
 
-# ✅ NEW: Fetch player from API and save full info
+# ✅ Fetch player from API and save full info (fixed small details)
 async def fetch_and_save_player(api, discord_id: int, player_tag: str):
     """Fetch player from CoC API and save full info in DB."""
     data = await api.get_player(player_tag)
+    if not data:
+        return None  # Fail-safe if API call fails
 
     player_doc = {
         "discord_id": discord_id,
         "player_tag": player_tag.upper(),
-        "player_name": data.get("name"),
+        "player_name": data.get("name", "Unknown"),
         "townhall": data.get("townHallLevel", 0),
         "trophies": data.get("trophies", 0),
         "attacks": 0,
