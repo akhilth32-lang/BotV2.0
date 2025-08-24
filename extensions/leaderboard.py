@@ -58,7 +58,7 @@ class LeaderboardView(discord.ui.View):
             offense_emoji = EMOJIS.get("offense", "⚔️")
             defense_emoji = EMOJIS.get("defense", "🛡️")
 
-            # === FIXED FORMATTING WITH INDENT ===
+            # === FIXED FORMATTING ===
             # First line: rank + player name + tag
             line1 = f"{idx}. {name} ({tag})"
 
@@ -68,8 +68,8 @@ class LeaderboardView(discord.ui.View):
             # Second line: trophies, offense, defense neatly aligned
             line2 = (
                 f"{indent}{trophy_emoji} {trophies} | "
-                f"{offense_emoji} `{offense_change:+}/{offense_attacks}` | "
-                f"{defense_emoji} `{defense_change:+}/{defense_defends}`"
+                f"{offense_emoji} {offense_change:+}/{offense_attacks} | "
+                f"{defense_emoji} {defense_change:+}/{defense_defends}"
             )
 
             description_lines.append(f"{line1}\n{line2}")
