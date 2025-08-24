@@ -22,12 +22,15 @@ class BackgroundUpdater(commands.Cog):
 
         try:
             players = await player_crud.get_all_linked_players()
-            print(f"Updating {len(players)} linked players.")
+            print(f"Found {len(players)} linked players.")
 
             for player in players:
                 player_tag = player["player_tag"]
+                print(f"Updating player {player_tag}...")
+
                 try:
                     player_data = await self.api.get_player(player_tag)
+                    print(f"API data for {player_tag}: {player_data}")
 
                     # Extract current stats from API
                     trophies = player_data.get("trophies", 0)
@@ -40,17 +43,15 @@ class BackgroundUpdater(commands.Cog):
                     prev_trophies = player.get("trophies", 0)
                     prev_offense_attacks = player.get("offense_attacks", 0)
                     prev_defense_defenses = player.get("defense_defenses", 0)
-                    prev_offense_trophies = player.get("offense_trophies", 0)
-                    prev_defense_trophies = player.get("defense_trophies", 0)
                     prev_rank = player.get("rank", 0)
 
                     # Calculate deltas
                     offense_change = trophies - prev_trophies
                     offense_count = attacks - prev_offense_attacks
-                    defense_change = 0  # Adjust if you track defense trophies differently
+                    defense_change = 0   # Adjust if tracking defense trophies
                     defense_count = defenses - prev_defense_defenses
 
-                    await player_crud.update_player_stats(
+                    updated = await player_crud.update_player_stats(
                         player_tag=player_tag,
                         trophies=trophies,
                         offense_change=offense_change,
@@ -65,7 +66,7 @@ class BackgroundUpdater(commands.Cog):
                         rank=rank
                     )
 
-                    print(f"Updated {player_tag} - Trophies: {trophies}, Attacks: {attacks}, Defenses: {defenses}")
+                    print(f"DB update for {player_tag}: {'Success' if updated else 'No change'}")
 
                 except Exception as e:
                     print(f"Failed to update player {player_tag}: {str(e)}")
