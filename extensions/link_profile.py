@@ -10,11 +10,9 @@ import random
 
 # Replace these URLs with your actual hosted profile photo URLs
 PROFILE_PHOTOS = [
-    "https://example.com/profile1.png",
-    "https://example.com/profile2.png",
-    "https://example.com/profile3.png",
-    "https://example.com/profile4.png",
-    "https://example.com/profile5.png",
+    "https://github.com/akhilth32-lang/BotV2.0/blob/main/profile1.png",
+    "https://github.com/akhilth32-lang/BotV2.0/blob/main/profile2.png",
+    "https://github.com/akhilth32-lang/BotV2.0/blob/main/profile3.png",
 ]
 
 class LinkProfile(commands.Cog):
