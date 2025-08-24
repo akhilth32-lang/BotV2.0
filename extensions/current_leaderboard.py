@@ -1,182 +1,94 @@
-# extensions/current_leaderboard.py
+# extensions/leaderboard.py
 
 import discord
 from discord import app_commands
 from discord.ext import commands
-from apis.leaderboard_fetcher import LeaderboardFetcher
-from config.legend_season import LEGEND_SEASONS_2025
+from database import player_crud, leaderboard_snapshot_crud
+from config import legend_season
+from config.emoji import EMOJIS
+from config.fonts import to_bold_gg
 from utils.embed_helpers import create_embed
-from config.fonts import to_bold_gg_sans
-from datetime import datetime, timezone
-from config.countries import COUNTRIES
+from utils.time_helpers import get_current_legend_season_and_day
+import datetime
 
-PAGE_SIZE = 50  # Show 50 players per page
-MAX_PLAYERS = 200  # Limit to top 200
-
-
-def get_current_season_day():
-    now = datetime.now(timezone.utc)
-    for season in LEGEND_SEASONS_2025:
-        if season["start"] <= now < season["end"]:
-            elapsed = (now - season["start"]).days + 1
-            total = season["duration_days"]
-            season_month = season["start"].strftime("%Y-%m")
-            return elapsed, total, season_month, now
-    return None, None, None, now
-
-
-def format_player_line(rank: int, player: dict) -> str:
-    """Return formatted leaderboard line for a player"""
-    name = to_bold_gg_sans(player.get("name", "Unknown"))
-    clan = player.get("clan", {}).get("name", "")
-    trophies = player.get("trophies", 0)
-
-    # Highlight top 3 ranks
-    if rank == 1:
-        prefix = "🥇"
-    elif rank == 2:
-        prefix = "🥈"
-    elif rank == 3:
-        prefix = "🥉"
-    else:
-        prefix = "🏆"
-
-    line = f"{prefix} {trophies} | {name}"
-    if clan:
-        line += f"\n   *{clan}*"
-    return line
-
-
-class CountrySelect(discord.ui.Select):
-    def __init__(self, view):
-        options = [
-            discord.SelectOption(label=c["name"], value=str(c["id"]))
-            for c in COUNTRIES
-        ]
-        super().__init__(
-            placeholder="Select a country/region...",
-            options=options,
-            min_values=1,
-            max_values=1
-        )
-        self.parent_view = view
-
-    async def callback(self, interaction: discord.Interaction):
-        self.parent_view.location_id = self.values[0]
-        self.parent_view.players_cache = []  # clear cache for new country
-        self.parent_view.page = 1
-        await self.parent_view.update_message(interaction)
+LEADERBOARD_PAGE_SIZE = 50  # show 50 players per page
 
 
 class LeaderboardView(discord.ui.View):
-    def __init__(self, bot, location_id="global"):
-        super().__init__(timeout=600)
+    def __init__(self, bot, players, country, page=0):
+        super().__init__(timeout=60)
         self.bot = bot
-        self.location_id = location_id
-        self.page = 1
-        self.fetcher = LeaderboardFetcher()
-        self.players_cache = []  # Cache all 200 players
+        self.players = players
+        self.page = page
+        self.country = country
 
-        # Add country selector
-        self.add_item(CountrySelect(self))
+        self.add_item(discord.ui.Button(label="Previous", style=discord.ButtonStyle.secondary, custom_id="prev"))
+        self.add_item(discord.ui.Button(label="Refresh", style=discord.ButtonStyle.secondary, custom_id="refresh"))
+        self.add_item(discord.ui.Button(label="Next", style=discord.ButtonStyle.secondary, custom_id="next"))
 
-    async def fetch_all_players(self):
-        """Fetch top 200 players from API once and store in cache."""
-        if not self.players_cache:
-            try:
-                result = await self.fetcher.api.get_location_leaderboard(
-                    self.location_id, limit=MAX_PLAYERS
-                )
-                self.players_cache = result.get("items", [])
-            except Exception as e:
-                raise RuntimeError(f"Failed to fetch leaderboard: {str(e)}")
-
-    async def fetch_and_build_embed(self):
-        try:
-            await self.fetch_all_players()
-
-            # Pagination
-            start_index = (self.page - 1) * PAGE_SIZE
-            end_index = start_index + PAGE_SIZE
-            players = self.players_cache[start_index:end_index]
-
-            description_lines = [
-                format_player_line(idx, player)
-                for idx, player in enumerate(players, start=start_index + 1)
-            ]
-
-            country_name = next(
-                (c["name"] for c in COUNTRIES if str(c["id"]) == str(self.location_id)),
-                "Global"
-            )
-
-            embed = create_embed(
-                title=f"{country_name} Legend League Current Leaderboard",
-                description="\n\n".join(description_lines) if description_lines else "No data found.",
-                color=discord.Color.dark_gray()
-            )
-
-            # Footer with season info
-            elapsed, total, season_month, now = get_current_season_day()
-            if elapsed and total and season_month:
-                now_local = now.astimezone()
-                footer_str = f"Day {elapsed}/{total} ({season_month}) | {now_local.strftime('%I:%M %p')}"
-            else:
-                footer_str = f"Date unknown | {datetime.now().strftime('%m/%d/%Y %I:%M %p')}"
-
-            total_pages = max(1, (len(self.players_cache) // PAGE_SIZE))
-            embed.set_footer(text=f"{footer_str} • Page {self.page}/{total_pages}")
-            return embed
-
-        except Exception as e:
-            return create_embed(
-                title="Error",
-                description=f"⚠️ Failed to fetch leaderboard: `{str(e)}`",
-                color=discord.Color.red()
-            )
-
-    async def update_message(self, interaction):
-        embed = await self.fetch_and_build_embed()
-        await interaction.response.edit_message(embed=embed, view=self)
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return True
 
     @discord.ui.button(label="Previous", style=discord.ButtonStyle.secondary)
-    async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if self.page > 1:
+    async def previous(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.page > 0:
             self.page -= 1
-            await self.update_message(interaction)
-        else:
-            await interaction.response.send_message("You are already on the first page.", ephemeral=True)
+        embed = await create_leaderboard_embed(self.players, self.page, self.country)
+        await interaction.response.edit_message(embed=embed, view=self)
 
-    @discord.ui.button(label="Refresh", style=discord.ButtonStyle.danger)
-    async def refresh_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.players_cache = []  # Clear cache to re-fetch
-        self.page = 1
-        await self.update_message(interaction)
+    @discord.ui.button(label="Refresh", style=discord.ButtonStyle.secondary)
+    async def refresh(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # fetch latest players again
+        players = await player_crud.get_all_players_sorted(self.country)
+        self.players = players
+        embed = await create_leaderboard_embed(players, self.page, self.country)
+        await interaction.response.edit_message(embed=embed, view=self)
 
     @discord.ui.button(label="Next", style=discord.ButtonStyle.secondary)
-    async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        max_pages = (MAX_PLAYERS // PAGE_SIZE)
-        if self.page < max_pages:
+    async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if (self.page + 1) * LEADERBOARD_PAGE_SIZE < len(self.players):
             self.page += 1
-            await self.update_message(interaction)
-        else:
-            await interaction.response.send_message("You are already on the last page.", ephemeral=True)
+        embed = await create_leaderboard_embed(self.players, self.page, self.country)
+        await interaction.response.edit_message(embed=embed, view=self)
 
 
-class CurrentLeaderboard(commands.Cog):
+async def create_leaderboard_embed(players, page, country):
+    start = page * LEADERBOARD_PAGE_SIZE
+    end = start + LEADERBOARD_PAGE_SIZE
+    page_players = players[start:end]
+
+    desc = []
+    for i, player in enumerate(page_players, start=start + 1):
+        line = f"{i}. {EMOJIS['trophy']} {player['trophies']} | {to_bold_gg(player['name'])}"
+        desc.append(line)
+
+    if not desc:
+        desc = ["No players found for this country."]
+
+    embed = discord.Embed(
+        title=f"🏆 {country.upper()} Leaderboard",
+        description="\n".join(desc),
+        color=discord.Color.dark_gray()
+    )
+
+    now = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+    embed.set_footer(text=f"Page {page+1} | Last updated {now}")
+
+    return embed
+
+
+class Leaderboard(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(
-        name="current_leaderboard",
-        description="Shows the current Legend League leaderboard (top 200, 50 per page)"
-    )
-    async def current_leaderboard(self, interaction: discord.Interaction):
-        await interaction.response.defer(thinking=True)
-        view = LeaderboardView(self.bot)
-        embed = await view.fetch_and_build_embed()
-        await interaction.followup.send(embed=embed, view=view)
+    @app_commands.command(name="leaderboard", description="Show the Legend League leaderboard")
+    @app_commands.describe(country="Country code (check countries.py)")
+    async def leaderboard(self, interaction: discord.Interaction, country: str):
+        players = await player_crud.get_all_players_sorted(country)
+        embed = await create_leaderboard_embed(players, 0, country)
+        view = LeaderboardView(self.bot, players, country, page=0)
+        await interaction.response.send_message(embed=embed, view=view)
 
 
 async def setup(bot):
-    await bot.add_cog(CurrentLeaderboard(bot))
+    await bot.add_cog(Leaderboard(bot))
