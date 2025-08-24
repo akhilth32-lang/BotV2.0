@@ -67,7 +67,9 @@ class LinkProfile(commands.Cog):
         )
 
         embed.set_thumbnail(url=random_photo_url)
-        embed.set_footer(text="Clash on! 🔥")
+        fire_emoji = EMOJIS.get("fire", "🔥")
+
+embed.set_footer(text=f"Clash on! {fire_emoji}")
 
         await interaction.followup.send(embed=embed, ephemeral=False)
 
