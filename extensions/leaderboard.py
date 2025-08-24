@@ -11,7 +11,7 @@ from config.fonts import to_bold_gg_sans
 from utils.time_helpers import get_current_legend_season_and_day
 import datetime
 
-LEADERBOARD_PAGE_SIZE = 20  # Keeping original page size
+LEADERBOARD_PAGE_SIZE = 2  # Keeping original page size
 
 class LeaderboardView(discord.ui.View):
     def __init__(self, bot, leaderboard_name, color, day, season_number, total_days):
