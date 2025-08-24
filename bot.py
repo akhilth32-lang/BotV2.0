@@ -21,6 +21,7 @@ initial_extensions = [
     'extensions.leaderboard',
     'extensions.current_leaderboard',
     'extensions.day_start_leaderboard',
+    'tasks.background_updater',   # Added this line to load background updater cog
 ]
 
 async def load_extensions():
