@@ -11,10 +11,13 @@ class BackgroundUpdater(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.api = ClashOfClansAPI()
+        self.last_reset_date = None
         self.update_players.start()
+        self.reset_offense_defense.start()
 
     def cog_unload(self):
         self.update_players.cancel()
+        self.reset_offense_defense.cancel()
 
     @tasks.loop(minutes=5.0)
     async def update_players(self):
@@ -33,31 +36,35 @@ class BackgroundUpdater(commands.Cog):
                     print(f"API data for {player_tag}: {player_data}")
 
                     # Extract current stats from API
-                    trophies = player_data.get("trophies", 0)
+                    current_trophies = player_data.get("trophies", 0)
                     townhall = player_data.get("townHallLevel", 0)
                     attacks = player_data.get("attackWins", 0)
                     defenses = player_data.get("defenseWins", 0)
                     rank = player_data.get("rank", 0)  # If available
 
-                    # Previous stats from DB for delta calculation
+                    # Previous stats from DB for calculation
                     prev_trophies = player.get("trophies", 0)
-                    prev_offense_attacks = player.get("offense_attacks", 0)
-                    prev_defense_defenses = player.get("defense_defenses", 0)
+                    offense_trophies = player.get("offense_trophies", 0)
+                    offense_attacks = player.get("offense_attacks", 0)
+                    defense_trophies = player.get("defense_trophies", 0)
+                    defense_defenses = player.get("defense_defenses", 0)
                     prev_rank = player.get("rank", 0)
 
-                    # Calculate deltas
-                    offense_change = trophies - prev_trophies
-                    offense_count = attacks - prev_offense_attacks
-                    defense_change = 0   # Adjust if tracking defense trophies
-                    defense_count = defenses - prev_defense_defenses
+                    # Calculate offense/defense trophies and counts
+                    if current_trophies > prev_trophies:
+                        offense_trophies += (current_trophies - prev_trophies)
+                        offense_attacks += 1
+                    elif current_trophies < prev_trophies:
+                        defense_trophies += (prev_trophies - current_trophies)
+                        defense_defenses += 1
 
                     updated = await player_crud.update_player_stats(
                         player_tag=player_tag,
-                        trophies=trophies,
-                        offense_change=offense_change,
-                        offense_count=offense_count,
-                        defense_change=defense_change,
-                        defense_count=defense_count,
+                        trophies=current_trophies,
+                        offense_change=offense_trophies,
+                        offense_count=offense_attacks,
+                        defense_change=defense_trophies,
+                        defense_count=defense_defenses,
                         townhall=townhall,
                         attacks=attacks,
                         defenses=defenses,
@@ -74,8 +81,30 @@ class BackgroundUpdater(commands.Cog):
         except Exception as e:
             print(f"Background update error: {str(e)}")
 
+    @tasks.loop(minutes=1.0)
+    async def reset_offense_defense(self):
+        now = datetime.datetime.utcnow() + datetime.timedelta(hours=5, minutes=30)  # IST timezone
+        if now.hour == 10 and now.minute == 30:
+            if self.last_reset_date != now.date():
+                print(f"Performing daily reset of offense/defense stats at {now.isoformat()}")
+                from database.database import players_collection
+                await players_collection.update_many({}, {
+                    "$set": {
+                        "offense_trophies": 0,
+                        "offense_attacks": 0,
+                        "defense_trophies": 0,
+                        "defense_defenses": 0
+                    }
+                })
+                self.last_reset_date = now.date()
+                print("Daily offense/defense reset complete.")
+
     @update_players.before_loop
     async def before_update(self):
+        await self.bot.wait_until_ready()
+
+    @reset_offense_defense.before_loop
+    async def before_reset(self):
         await self.bot.wait_until_ready()
 
 
