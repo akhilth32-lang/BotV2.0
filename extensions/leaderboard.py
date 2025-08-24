@@ -65,7 +65,7 @@ class LeaderboardView(discord.ui.View):
             stats_line = f"{trophy_emoji} {trophies} | {offense_emoji} {offense_change:+}/{offense_attacks} | {defense_emoji} -{abs(defense_change)}/{defense_defends}"
 
             # Blank line for spacing
-            description_lines.append(f"{idx}. {header}\n\n{stats_line}\n\n")
+            description_lines.append(f"{idx}. {header}\n{stats_line}\n\n")
 
         leaderboard_emoji = EMOJIS.get("leaderboard", "")
         embed = create_embed(
