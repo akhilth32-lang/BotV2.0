@@ -3,8 +3,7 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-from database import player_crud
-from database import leaderboard_snapshot_crud
+from database import player_crud, leaderboard_snapshot_crud
 from config import legend_season
 from config.emoji import EMOJIS
 from utils.embed_helpers import create_embed
@@ -30,24 +29,20 @@ class Leaderboard(commands.Cog):
     async def leaderboard(self, interaction: discord.Interaction, leaderboard_name: str, color: str = "#000000", day: int = 0):
         await interaction.response.defer()
 
-        # Determine the current Legend League season and day for footer and snapshot logic
+        # Determine current season and day
         season_number, current_day = get_current_legend_season_and_day(legend_season.LEGEND_SEASONS_2025)
 
+        # Fetch players data - live if day=0 else from snapshot for selected day
         if day == 0 or day == current_day:
-            # Fetch live player data for current day or if day=0 (default)
             all_players = await player_crud.get_all_linked_players()
         else:
-            # Fetch snapshot for the specified season and day
             snapshot = await leaderboard_snapshot_crud.get_snapshot(season_number, day)
-            if snapshot is None or "leaderboard_data" not in snapshot:
+            if not snapshot or "leaderboard_data" not in snapshot:
                 await interaction.followup.send(f"No snapshot data found for season {season_number} day {day}.")
                 return
             all_players = snapshot["leaderboard_data"]
 
-        # Sort players by trophies descending
         sorted_players = sorted(all_players, key=lambda p: p.get('trophies', 0), reverse=True)
-
-        # Limit leaderboard size as per constant
         page_players = sorted_players[:LEADERBOARD_PAGE_SIZE]
 
         description_lines = []
@@ -55,6 +50,7 @@ class Leaderboard(commands.Cog):
             name = to_bold_gg_sans(player.get("player_name", "Unknown"))
             tag = player.get("player_tag", "N/A")
             trophies = player.get("trophies", 0)
+
             offense_change = player.get("offense_trophies", 0)
             offense_attacks = player.get("offense_attacks", 0)
             defense_change = player.get("defense_trophies", 0)
@@ -72,21 +68,30 @@ class Leaderboard(commands.Cog):
             color=discord.Color(int(color.replace('#', ''), 16))
         )
 
-        # Format footer: day/current_day, current season month-year, and local time
-        total_days = 0
-        for season in legend_season.LEGEND_SEASONS_2025:
-            if season["season_number"] == season_number:
-                total_days = season["duration_days"]
-                break
+        # Get total days in current season
+        total_days = next((season["duration_days"] for season in legend_season.LEGEND_SEASONS_2025 if season["season_number"] == season_number), None)
+        now_utc = datetime.datetime.now(datetime.timezone.utc)
+        now_local = now_utc.astimezone()
+        today_midnight = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
+        season_month = next((season["start"].strftime("%Y-%m") for season in legend_season.LEGEND_SEASONS_2025 if season["season_number"] == season_number), "")
 
-        now = datetime.datetime.now()
-        month_year = now.strftime("%Y-%m")
-        local_time = now.strftime("%I:%M %p")
+        if day == 0:
+            day_display = current_day
+        else:
+            day_display = day
 
-        embed.set_footer(text=f"Day {day}/{total_days} ({month_year}) | Today at {local_time}")
+        if day_display and total_days and season_month:
+            if now_local > today_midnight:
+                footer_str = f"Day {day_display}/{total_days} ({season_month}) | Today at {now_local.strftime('%I:%M %p')}"
+            else:
+                footer_str = f"Day {day_display}/{total_days} ({season_month}) | {now_local.strftime('%m/%d/%Y %I:%M %p')}"
+        else:
+            footer_str = f"Date unknown | {now_local.strftime('%m/%d/%Y %I:%M %p')}"
+
+        embed.set_footer(text=footer_str)
 
         await interaction.followup.send(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(Leaderboard(bot))
-    
+            
