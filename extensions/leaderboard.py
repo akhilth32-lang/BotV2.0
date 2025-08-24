@@ -11,7 +11,7 @@ from config.fonts import to_bold_gg_sans
 from utils.time_helpers import get_current_legend_season_and_day
 import datetime
 
-LEADERBOARD_PAGE_SIZE = 1 # Keeping original page size
+LEADERBOARD_PAGE_SIZE = 2 # Keeping original page size
 
 class LeaderboardView(discord.ui.View):
     def __init__(self, bot, leaderboard_name, color, day, season_number, total_days):
@@ -56,7 +56,7 @@ class LeaderboardView(discord.ui.View):
 
             # Format: name and tag on one line, and stats on next
             header = f"{name} ({tag})"
-            stats_line = f"🏆 {trophies} | {EMOJIS['offense']} {offense_change:+}/{offense_attacks} | {EMOJIS['defense']} {defense_change:"-"}/{defense_defends}"
+            stats_line = f"🏆 {trophies} | {EMOJIS['offense']} {offense_change:+}/{offense_attacks} | {EMOJIS['defense']} {defense_change:-}/{defense_defends}"
             # Add a small blank line after each player for spacing
             description_lines.append(f"{idx}. {header}\n{stats_line}\n")
 
