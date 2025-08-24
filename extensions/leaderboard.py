@@ -55,22 +55,22 @@ class LeaderboardView(discord.ui.View):
             defense_defends = player.get("defense_defenses", 0)
 
             trophy_emoji = EMOJIS.get("trophy", "🏆")
-            # Custom emojis for offense and defense as you used (attack, def1)
             offense_emoji = EMOJIS.get("offense", "🏹")
             defense_emoji = EMOJIS.get("defense", "🛡️")
 
-            # Format player line as requested
-            header = f"{name} ({tag})"
-            # Note: - sign added before defense trophies explicitly
-            stats_line = f"{trophy_emoji} {trophies} | {offense_emoji} {offense_change:+}/{offense_attacks} | {defense_emoji} -{abs(defense_change)}/{defense_defends}"
-
-            # Blank line for spacing
-            description_lines.append(f"{idx}. {header}\n{stats_line}\n\n")
+            # Format all on one line with spaces and inline code for offense and defense to de-emphasize
+            line = (
+                f"{idx}. {name} ({tag})   "
+                f"{trophy_emoji} {trophies} | "
+                f"`{offense_emoji} {offense_change:+}/{offense_attacks}` | "
+                f"`{defense_emoji} -{abs(defense_change)}/{defense_defends}`"
+            )
+            description_lines.append(line)
 
         leaderboard_emoji = EMOJIS.get("leaderboard", "")
         embed = create_embed(
             title=f"{leaderboard_emoji} {self.leaderboard_name} Leaderboard",
-            description="".join(description_lines),
+            description="\n".join(description_lines),
             color=discord.Color(int(self.color.replace('#', ''), 16))
         )
 
@@ -153,4 +153,4 @@ class Leaderboard(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(Leaderboard(bot))
-    
+            
