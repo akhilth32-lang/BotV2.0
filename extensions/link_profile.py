@@ -39,7 +39,7 @@ class LinkProfile(commands.Cog):
             discord_id = player.get("discord_id")
 
             # Townhall emoji (only TH17 uses custom emoji, fallback otherwise)
-            th_level = player.get("townHallLevel", "?")
+            th_level = player.get("townhall", "?")
             if th_level == 17:
                 th_emoji = EMOJIS.get("townhall", "🏠")  # custom emoji for TH17
             else:
