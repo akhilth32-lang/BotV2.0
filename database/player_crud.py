@@ -27,8 +27,8 @@ async def add_linked_player(discord_id: int, player_tag: str, player_name: str, 
         "offense_attacks": 0,
         "defense_trophies": 0,
         "defense_defenses": 0,
-        "attacks": 0,
-        "defenses": 0,
+        "attackWins": 0,
+        "defenseWins": 0,
         "prev_trophies": trophies,
         "prev_rank": 0,
         "rank": 0,
@@ -77,9 +77,9 @@ async def update_player_stats(player_tag: str, trophies: int, offense_change: in
     if townhall is not None:
         update_fields["townhall"] = townhall
     if attacks is not None:
-        update_fields["attacks"] = attacks
+        update_fields["attackWins"] = attacks
     if defenses is not None:
-        update_fields["defenses"] = defenses
+        update_fields["defenseWins"] = defenses
     if prev_trophies is not None:
         update_fields["prev_trophies"] = prev_trophies
     if prev_rank is not None:
@@ -111,8 +111,8 @@ async def fetch_and_save_player(api, discord_id: int, player_tag: str):
         "player_name": data.get("name", "Unknown"),
         "townhall": data.get("townHallLevel", 0),
         "trophies": data.get("trophies", 0),
-        "attacks": 0,
-        "defenses": 0,
+        "attackWins": 0,
+        "defenseWins": 0,
         "offense_attacks": 0,
         "offense_trophies": 0,
         "defense_defenses": 0,
