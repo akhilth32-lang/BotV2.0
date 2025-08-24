@@ -44,9 +44,12 @@ class LeaderboardView(discord.ui.View):
         end = start + LEADERBOARD_PAGE_SIZE
         page_players = self.players[start:end]
 
-        description_lines = []
+        # === MONOSPACE TABLE FORMATTING ===
+        header = f"{'Rank':<4} {'Name':<15} {'🏆Trophies':<10} ⚔️Offense   🛡️Defense"
+        description_lines = [header]
+
         for idx, player in enumerate(page_players, start=start + 1):
-            name = to_bold_gg_sans(player.get("player_name", "Unknown"))
+            name = player.get("player_name", "Unknown")[:15]  # limit name length
             tag = player.get("player_tag", "N/A")
             trophies = player.get("trophies", 0)
             offense_change = player.get("offense_trophies", 0)
@@ -54,30 +57,21 @@ class LeaderboardView(discord.ui.View):
             defense_change = player.get("defense_trophies", 0)
             defense_defends = player.get("defense_defenses", 0)
 
-            trophy_emoji = EMOJIS.get("trophy", "🏆")
-            offense_emoji = EMOJIS.get("offense", "⚔️")
-            defense_emoji = EMOJIS.get("defense", "🛡️")
-
-            # === FIXED FORMATTING ===
-            # First line: rank + player name + tag
-            line1 = f"{idx}. {name} ({tag})"
-
-            # Indentation so 🏆 starts below first letter of name
-            indent = " " * (len(f"{idx}. "))
-
-            # Second line: trophies, offense, defense neatly aligned
-            line2 = (
-                f"{indent}{trophy_emoji} {trophies} | "
-                f"{offense_emoji} {offense_change:+}/{offense_attacks} | "
-                f"{defense_emoji} {defense_change:+}/{defense_defends}"
+            # each value aligned with fixed-width spacing
+            line = (
+                f"{idx:<4} {name:<15} {trophies:<10} "
+                f"{offense_change:+}/{offense_attacks:<5} "
+                f"{defense_change:+}/{defense_defends:<5}"
             )
+            description_lines.append(line)
 
-            description_lines.append(f"{line1}\n{line2}")
+        # wrap everything inside a code block for perfect alignment
+        description = "```" + "\n".join(description_lines) + "```"
 
         leaderboard_emoji = EMOJIS.get("leaderboard", "")
         embed = create_embed(
             title=f"{leaderboard_emoji} {self.leaderboard_name} Leaderboard",
-            description="\n".join(description_lines),
+            description=description,
             color=discord.Color(int(self.color.replace('#', ''), 16))
         )
 
