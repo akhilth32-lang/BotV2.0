@@ -1,6 +1,5 @@
 # extensions/link.py
 
-
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -42,7 +41,7 @@ class Link(commands.Cog):
             await interaction.followup.send(embed=embed, ephemeral=True)
             return
 
-        # Fetch player info
+        # Fetch player info with full details from API
         try:
             player_info = await self.coc_api.get_player(player_tag)
         except Exception as e:
@@ -50,12 +49,16 @@ class Link(commands.Cog):
             return
 
         player_name = player_info.get("name", "Unknown")
+        townhall = player_info.get("townHallLevel", 0)
+        trophies = player_info.get("trophies", 0)
 
-        # Save linked player (prevent duplicates)
+        # Save linked player (prevent duplicates), passing all fields
         new_link = await player_crud.add_linked_player(
             discord_id=target_user.id,
             player_tag=player_tag,
-            player_name=player_name
+            player_name=player_name,
+            townhall=townhall,
+            trophies=trophies
         )
 
         if not new_link:
@@ -77,3 +80,4 @@ class Link(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(Link(bot))
+    
