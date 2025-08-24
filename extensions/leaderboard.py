@@ -4,11 +4,12 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from database import player_crud
+from database import leaderboard_snapshot_crud
 from config import legend_season
 from config.emoji import EMOJIS
 from utils.embed_helpers import create_embed
-from config.fonts import to_bold_gg_sans, to_regular_gg_sans
-from utils.time_helpers import get_current_legend_season_and_day  # You need to implement this helper
+from config.fonts import to_bold_gg_sans
+from utils.time_helpers import get_current_legend_season_and_day
 import datetime
 
 LEADERBOARD_PAGE_SIZE = 20
@@ -29,11 +30,24 @@ class Leaderboard(commands.Cog):
     async def leaderboard(self, interaction: discord.Interaction, leaderboard_name: str, color: str = "#000000", day: int = 0):
         await interaction.response.defer()
 
-        # Fetch linked players sorted by trophies descending
-        all_players = await player_crud.get_all_linked_players()
+        # Determine the current Legend League season and day for footer and snapshot logic
+        season_number, current_day = get_current_legend_season_and_day(legend_season.LEGEND_SEASONS_2025)
+
+        if day == 0 or day == current_day:
+            # Fetch live player data for current day or if day=0 (default)
+            all_players = await player_crud.get_all_linked_players()
+        else:
+            # Fetch snapshot for the specified season and day
+            snapshot = await leaderboard_snapshot_crud.get_snapshot(season_number, day)
+            if snapshot is None or "leaderboard_data" not in snapshot:
+                await interaction.followup.send(f"No snapshot data found for season {season_number} day {day}.")
+                return
+            all_players = snapshot["leaderboard_data"]
+
+        # Sort players by trophies descending
         sorted_players = sorted(all_players, key=lambda p: p.get('trophies', 0), reverse=True)
 
-        # Pagination removed: show only first LEADERBOARD_PAGE_SIZE players or all
+        # Limit leaderboard size as per constant
         page_players = sorted_players[:LEADERBOARD_PAGE_SIZE]
 
         description_lines = []
@@ -58,11 +72,18 @@ class Leaderboard(commands.Cog):
             color=discord.Color(int(color.replace('#', ''), 16))
         )
 
-        # Get current season and day for footer
-        season_number, legend_day = get_current_legend_season_and_day(legend_season.LEGEND_SEASONS_2025)
-        now_local = datetime.datetime.now().strftime("%I:%M %p")
+        # Format footer: day/current_day, current season month-year, and local time
+        total_days = 0
+        for season in legend_season.LEGEND_SEASONS_2025:
+            if season["season_number"] == season_number:
+                total_days = season["duration_days"]
+                break
 
-        embed.set_footer(text=f"Day {legend_day}/{season_number} ({datetime.datetime.now():%Y-%m}) | Today at {now_local}")
+        now = datetime.datetime.now()
+        month_year = now.strftime("%Y-%m")
+        local_time = now.strftime("%I:%M %p")
+
+        embed.set_footer(text=f"Day {day}/{total_days} ({month_year}) | Today at {local_time}")
 
         await interaction.followup.send(embed=embed)
 
