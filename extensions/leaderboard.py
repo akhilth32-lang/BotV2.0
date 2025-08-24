@@ -55,17 +55,21 @@ class LeaderboardView(discord.ui.View):
             defense_defends = player.get("defense_defenses", 0)
 
             trophy_emoji = EMOJIS.get("trophy", "🏆")
-            offense_emoji = EMOJIS.get("offense", "🏹")
+            offense_emoji = EMOJIS.get("offense", "⚔️")
             defense_emoji = EMOJIS.get("defense", "🛡️")
 
-            # Format all on one line with spaces and inline code for offense and defense to de-emphasize
-            line = (
-                f"{idx}. {name} ({tag})      "       
+            # === FIXED FORMATTING ===
+            # First line: rank + player name + tag
+            line1 = f"{idx}. {name} ({tag})"
+
+            # Second line: trophies, offense, defense neatly aligned
+            line2 = (
                 f"{trophy_emoji} {trophies} | "
                 f"{offense_emoji} `{offense_change:+}/{offense_attacks}` | "
-                f"{defense_emoji} `-{abs(defense_change)}/{defense_defends}`"
+                f"{defense_emoji} `{defense_change:+}/{defense_defends}`"
             )
-            description_lines.append(line)
+
+            description_lines.append(f"{line1}\n{line2}")
 
         leaderboard_emoji = EMOJIS.get("leaderboard", "")
         embed = create_embed(
