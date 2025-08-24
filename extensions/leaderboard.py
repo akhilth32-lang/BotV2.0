@@ -11,7 +11,105 @@ from config.fonts import to_bold_gg_sans
 from utils.time_helpers import get_current_legend_season_and_day
 import datetime
 
-LEADERBOARD_PAGE_SIZE = 20
+LEADERBOARD_PAGE_SIZE = 20  # Keeping original page size
+
+class LeaderboardView(discord.ui.View):
+    def __init__(self, bot, leaderboard_name, color, day, season_number, total_days):
+        super().__init__(timeout=None)
+        self.bot = bot
+        self.leaderboard_name = leaderboard_name
+        self.color = color
+        self.day = day
+        self.current_page = 0
+        self.season_number = season_number
+        self.total_days = total_days
+        self.players = []
+    
+    async def load_players(self):
+        current_season, current_day = get_current_legend_season_and_day(legend_season.LEGEND_SEASONS_2025)
+        target_day = self.day if self.day > 0 else current_day
+
+        if self.day == 0 or self.day == current_day:
+            self.players = await player_crud.get_all_linked_players()
+        else:
+            snapshot = await leaderboard_snapshot_crud.get_snapshot(self.season_number, target_day)
+            if snapshot and "leaderboard_data" in snapshot:
+                self.players = snapshot["leaderboard_data"]
+            else:
+                self.players = []
+        self.players.sort(key=lambda p: p.get("trophies", 0), reverse=True)
+
+    def create_embed(self):
+        start = self.current_page * LEADERBOARD_PAGE_SIZE
+        end = start + LEADERBOARD_PAGE_SIZE
+        page_players = self.players[start:end]
+
+        description_lines = []
+        for idx, player in enumerate(page_players, start=start + 1):
+            name = to_bold_gg_sans(player.get("player_name", "Unknown"))
+            tag = player.get("player_tag", "N/A")
+            trophies = player.get("trophies", 0)
+            offense_change = player.get("offense_trophies", 0)
+            offense_attacks = player.get("offense_attacks", 0)
+            defense_change = player.get("defense_trophies", 0)
+            defense_defends = player.get("defense_defenses", 0)
+
+            # Format: name and tag on one line, and stats on next
+            header = f"{name} ({tag})"
+            stats_line = f"🏆 {trophies} | {EMOJIS['offense']} {offense_change:+}/{offense_attacks} | {EMOJIS['defense']} {defense_change:-}/{defense_defends}"
+            # Add a small blank line after each player for spacing
+            description_lines.append(f"{idx}. {header}\n{stats_line}\n")
+
+        embed = create_embed(
+            title=f"{self.leaderboard_name} Leaderboard",
+            description="".join(description_lines),
+            color=discord.Color(int(self.color.replace('#', ''), 16))
+        )
+
+        now_utc = datetime.datetime.now(datetime.timezone.utc)
+        now_local = now_utc.astimezone()
+        today_midnight = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
+        month_year = next(
+            (s["start"].strftime("%Y-%m") for s in legend_season.LEGEND_SEASONS_2025 if s["season_number"] == self.season_number),
+            ""
+        )
+        day_display = self.day if self.day > 0 else get_current_legend_season_and_day(legend_season.LEGEND_SEASONS_2025)[1]
+        if day_display and self.total_days and month_year:
+            if now_local > today_midnight:
+                footer_text = f"Day {day_display}/{self.total_days} ({month_year}) | Today at {now_local.strftime('%I:%M %p')}"
+            else:
+                footer_text = f"Day {day_display}/{self.total_days} ({month_year}) | {now_local.strftime('%m/%d/%Y %I:%M %p')}"
+        else:
+            footer_text = f"Date unknown | {now_local.strftime('%m/%d/%Y %I:%M %p')}"
+
+        embed.set_footer(text=footer_text)
+        return embed
+
+    @discord.ui.button(label="Previous", style=discord.ButtonStyle.primary, emoji="⬅️")
+    async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.current_page > 0:
+            self.current_page -= 1
+            embed = self.create_embed()
+            await interaction.response.edit_message(embed=embed, view=self)
+        else:
+            await interaction.response.send_message("Already at the first page.", ephemeral=True)
+
+    @discord.ui.button(label="Next", style=discord.ButtonStyle.primary, emoji="➡️")
+    async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        max_page = (len(self.players) - 1) // LEADERBOARD_PAGE_SIZE
+        if self.current_page < max_page:
+            self.current_page += 1
+            embed = self.create_embed()
+            await interaction.response.edit_message(embed=embed, view=self)
+        else:
+            await interaction.response.send_message("Already at the last page.", ephemeral=True)
+
+    @discord.ui.button(label="Refresh", style=discord.ButtonStyle.secondary, emoji="🔄")
+    async def refresh_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.load_players()
+        self.current_page = 0
+        embed = self.create_embed()
+        await interaction.response.edit_message(embed=embed, view=self)
 
 class Leaderboard(commands.Cog):
     def __init__(self, bot):
@@ -19,7 +117,7 @@ class Leaderboard(commands.Cog):
 
     @app_commands.command(
         name="leaderboard",
-        description="Show leaderboard of all linked Clash of Clans player accounts"
+        description="Show leaderboard of all linked Clash of Clans player accounts with navigation buttons"
     )
     @app_commands.describe(
         leaderboard_name="Name of the leaderboard to show",
@@ -29,69 +127,22 @@ class Leaderboard(commands.Cog):
     async def leaderboard(self, interaction: discord.Interaction, leaderboard_name: str, color: str = "#000000", day: int = 0):
         await interaction.response.defer()
 
-        # Determine current season and day
         season_number, current_day = get_current_legend_season_and_day(legend_season.LEGEND_SEASONS_2025)
-
-        # Fetch players data - live if day=0 else from snapshot for selected day
-        if day == 0 or day == current_day:
-            all_players = await player_crud.get_all_linked_players()
-        else:
-            snapshot = await leaderboard_snapshot_crud.get_snapshot(season_number, day)
-            if not snapshot or "leaderboard_data" not in snapshot:
-                await interaction.followup.send(f"No snapshot data found for season {season_number} day {day}.")
-                return
-            all_players = snapshot["leaderboard_data"]
-
-        sorted_players = sorted(all_players, key=lambda p: p.get('trophies', 0), reverse=True)
-        page_players = sorted_players[:LEADERBOARD_PAGE_SIZE]
-
-        description_lines = []
-        for idx, player in enumerate(page_players, start=1):
-            name = to_bold_gg_sans(player.get("player_name", "Unknown"))
-            tag = player.get("player_tag", "N/A")
-            trophies = player.get("trophies", 0)
-
-            offense_change = player.get("offense_trophies", 0)
-            offense_attacks = player.get("offense_attacks", 0)
-            defense_change = player.get("defense_trophies", 0)
-            defense_defends = player.get("defense_defenses", 0)
-
-            offense_display = f"{EMOJIS['offense']} {offense_change:+}/{offense_attacks}"
-            defense_display = f"{EMOJIS['defense']} {defense_change:-}/{defense_defends}"
-
-            line = f"{idx}. {name} ({tag})\n   🏆 {trophies} | {offense_display} | {defense_display}"
-            description_lines.append(line)
-
-        embed = create_embed(
-            title=f"{leaderboard_name} Leaderboard",
-            description="\n".join(description_lines),
-            color=discord.Color(int(color.replace('#', ''), 16))
+        total_days = next(
+            (season["duration_days"] for season in legend_season.LEGEND_SEASONS_2025 if season["season_number"] == season_number),
+            None
         )
 
-        # Get total days in current season
-        total_days = next((season["duration_days"] for season in legend_season.LEGEND_SEASONS_2025 if season["season_number"] == season_number), None)
-        now_utc = datetime.datetime.now(datetime.timezone.utc)
-        now_local = now_utc.astimezone()
-        today_midnight = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
-        season_month = next((season["start"].strftime("%Y-%m") for season in legend_season.LEGEND_SEASONS_2025 if season["season_number"] == season_number), "")
+        view = LeaderboardView(self.bot, leaderboard_name, color, day, season_number, total_days)
+        await view.load_players()
 
-        if day == 0:
-            day_display = current_day
-        else:
-            day_display = day
-
-        if day_display and total_days and season_month:
-            if now_local > today_midnight:
-                footer_str = f"Day {day_display}/{total_days} ({season_month}) | Today at {now_local.strftime('%I:%M %p')}"
-            else:
-                footer_str = f"Day {day_display}/{total_days} ({season_month}) | {now_local.strftime('%m/%d/%Y %I:%M %p')}"
-        else:
-            footer_str = f"Date unknown | {now_local.strftime('%m/%d/%Y %I:%M %p')}"
-
-        embed.set_footer(text=footer_str)
-
-        await interaction.followup.send(embed=embed)
+        if not view.players:
+            await interaction.followup.send(f"No data found for season {season_number} day {day}.")
+            return
+            
+        embed = view.create_embed()
+        await interaction.followup.send(embed=embed, view=view)
 
 async def setup(bot):
     await bot.add_cog(Leaderboard(bot))
-            
+                       
