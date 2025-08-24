@@ -11,7 +11,7 @@ from config.fonts import to_bold_gg_sans
 from utils.time_helpers import get_current_legend_season_and_day
 import datetime
 
-LEADERBOARD_PAGE_SIZE = 20  # Keeping original page size
+LEADERBOARD_PAGE_SIZE = 1 # Keeping original page size
 
 class LeaderboardView(discord.ui.View):
     def __init__(self, bot, leaderboard_name, color, day, season_number, total_days):
@@ -56,7 +56,7 @@ class LeaderboardView(discord.ui.View):
 
             # Format: name and tag on one line, and stats on next
             header = f"{name} ({tag})"
-            stats_line = f"🏆 {trophies} | {EMOJIS['offense']} {offense_change:+}/{offense_attacks} | {EMOJIS['defense']} {defense_change:-}/{defense_defends}"
+            stats_line = f"🏆 {trophies} | {EMOJIS['offense']} {offense_change:+}/{offense_attacks} | {EMOJIS['defense']} {defense_change:"-"}/{defense_defends}"
             # Add a small blank line after each player for spacing
             description_lines.append(f"{idx}. {header}\n{stats_line}\n")
 
@@ -85,7 +85,7 @@ class LeaderboardView(discord.ui.View):
         embed.set_footer(text=footer_text)
         return embed
 
-    @discord.ui.button(label="Previous", style=discord.ButtonStyle.primary, emoji="⬅️")
+    @discord.ui.button(label="Previous", style=discord.ButtonStyle.primary)
     async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         if self.current_page > 0:
             self.current_page -= 1
@@ -94,7 +94,7 @@ class LeaderboardView(discord.ui.View):
         else:
             await interaction.response.send_message("Already at the first page.", ephemeral=True)
 
-    @discord.ui.button(label="Next", style=discord.ButtonStyle.primary, emoji="➡️")
+    @discord.ui.button(label="Next", style=discord.ButtonStyle.primary)
     async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         max_page = (len(self.players) - 1) // LEADERBOARD_PAGE_SIZE
         if self.current_page < max_page:
@@ -104,7 +104,7 @@ class LeaderboardView(discord.ui.View):
         else:
             await interaction.response.send_message("Already at the last page.", ephemeral=True)
 
-    @discord.ui.button(label="Refresh", style=discord.ButtonStyle.secondary, emoji="🔄")
+    @discord.ui.button(label="Refresh", style=discord.ButtonStyle.secondary)
     async def refresh_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.load_players()
         self.current_page = 0
