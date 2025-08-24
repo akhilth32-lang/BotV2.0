@@ -58,13 +58,16 @@ class LeaderboardView(discord.ui.View):
             offense_emoji = EMOJIS.get("offense", "⚔️")
             defense_emoji = EMOJIS.get("defense", "🛡️")
 
-            # === FIXED FORMATTING ===
+            # === FIXED FORMATTING WITH INDENT ===
             # First line: rank + player name + tag
             line1 = f"{idx}. {name} ({tag})"
 
+            # Indentation so 🏆 starts below first letter of name
+            indent = " " * (len(f"{idx}. "))
+
             # Second line: trophies, offense, defense neatly aligned
             line2 = (
-                f"{trophy_emoji} {trophies} | "
+                f"{indent}{trophy_emoji} {trophies} | "
                 f"{offense_emoji} `{offense_change:+}/{offense_attacks}` | "
                 f"{defense_emoji} `{defense_change:+}/{defense_defends}`"
             )
