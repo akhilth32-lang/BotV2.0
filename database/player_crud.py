@@ -6,12 +6,20 @@ from typing import List, Optional
 import datetime
 
 
-async def add_linked_player(discord_id: int, player_tag: str, api_token: str, player_name: str):
-    """Add a new linked player for a discord user."""
+async def add_linked_player(discord_id: int, player_tag: str, player_name: str):
+    """Add a new linked player for a Discord user.
+       Prevents duplicate linking of the same player_tag.
+    """
+    player_tag = player_tag.upper()
+
+    # Check if already linked (globally)
+    existing = await players_collection.find_one({"player_tag": player_tag, "unlinked": False})
+    if existing:
+        return None  # Already linked
+
     player_doc = {
         "discord_id": discord_id,
-        "player_tag": player_tag.upper(),
-        "api_token": api_token,
+        "player_tag": player_tag,
         "player_name": player_name,
         "offense_trophies_change": 0,
         "offense_attacks": 0,
@@ -65,4 +73,3 @@ async def get_all_linked_players(limit: int = 2000):
     """Get all linked players for updating stats."""
     cursor = players_collection.find({"unlinked": False}).limit(limit)
     return await cursor.to_list(length=limit)
-    
