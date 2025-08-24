@@ -4,7 +4,6 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from apis.leaderboard_fetcher import LeaderboardFetcher
-from config import emoji
 from config.legend_season import LEGEND_SEASONS_2025
 from utils.embed_helpers import create_embed
 from config.fonts import to_bold_gg_sans
@@ -22,6 +21,19 @@ def get_current_season_day():
             season_month = season["start"].strftime("%Y-%m")
             return elapsed, total, season_month, now
     return None, None, None, now
+
+
+def format_rank(rank: int) -> str:
+    """Return styled rank numbers for top 3"""
+    if rank == 1:
+        return "**`1.`**"  # gold look using bold + code style
+    elif rank == 2:
+        return "**`2.`**"  # silver style
+    elif rank == 3:
+        return "**`3.`**"  # bronze style
+    else:
+        return f"`{rank}.`"  # normal gray numbers
+
 
 class LeaderboardView(discord.ui.View):
     def __init__(self, bot, location_id="global"):
@@ -54,9 +66,17 @@ class LeaderboardView(discord.ui.View):
 
             description_lines = []
             for idx, player in enumerate(players, start=start_index + 1):
+                rank_str = format_rank(idx)
+
                 name = to_bold_gg_sans(player.get("name", "Unknown"))
+                clan = player.get("clan", {}).get("name", "")
                 trophies = player.get("trophies", 0)
-                line = f"{idx}. {name} 🏆 {trophies}"
+
+                line = f"{rank_str} {name}"
+                if clan:
+                    line += f"\n   *{clan}*"
+                line += f"\n   🏆 {trophies}\n"
+
                 description_lines.append(line)
 
             embed = create_embed(
@@ -69,15 +89,12 @@ class LeaderboardView(discord.ui.View):
             elapsed, total, season_month, now = get_current_season_day()
             if elapsed and total and season_month:
                 now_local = now.astimezone()
-                today_midnight = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
-                if now_local > today_midnight:
-                    footer_str = f"Day {elapsed}/{total} ({season_month}) | Today at {now_local.strftime('%I:%M %p')}"
-                else:
-                    footer_str = f"Day {elapsed}/{total} ({season_month}) | {now_local.strftime('%m/%d/%Y %I:%M %p')}"
+                footer_str = f"Day {elapsed}/{total} ({season_month}) | {now_local.strftime('%I:%M %p')}"
             else:
                 footer_str = f"Date unknown | {datetime.now().strftime('%m/%d/%Y %I:%M %p')}"
 
-            embed.set_footer(text=f"{footer_str} • Page {self.page}/{(len(self.players_cache) // PAGE_SIZE)}")
+            total_pages = (len(self.players_cache) // PAGE_SIZE)
+            embed.set_footer(text=f"{footer_str} • Page {self.page}/{total_pages}")
             return embed
 
         except Exception as e:
@@ -128,6 +145,7 @@ class CurrentLeaderboard(commands.Cog):
         view = LeaderboardView(self.bot)
         embed = await view.fetch_and_build_embed()
         await interaction.followup.send(embed=embed, view=view)
+
 
 async def setup(bot):
     await bot.add_cog(CurrentLeaderboard(bot))
