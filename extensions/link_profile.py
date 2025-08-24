@@ -56,12 +56,12 @@ class LinkProfile(commands.Cog):
             trophies = player.get("trophies", 0)
 
             # Format line like:
-            # 1. <:th17:1409068038107697255> • **AKHIL**   |<:legend:1399752114653233322> 5321  (#8UQQL8VU8)
+            # <:th17:1409068038107697255> • **AKHIL** | <:legend:1399752114653233322> 5321 (tag)
             line = f"{th_emoji} • **{name}** | {legend_league_emoji} {trophies}  ({tag})"
             description_lines.append(line)
 
         embed = create_embed(
-            title=f"Player Profile - {user.display_name} ({user.id})",
+            title=f"Player Profile - {user.display_name}",
             description="\n".join(description_lines),
             color=discord.Color.dark_theme()
         )
