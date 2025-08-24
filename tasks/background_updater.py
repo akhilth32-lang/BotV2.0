@@ -1,5 +1,3 @@
-# tasks/background_updater.py
-
 import asyncio
 from discord.ext import commands, tasks
 from database import player_crud
@@ -32,32 +30,35 @@ class BackgroundUpdater(commands.Cog):
                 print(f"Updating player {player_tag}...")
 
                 try:
+                    # Fetch latest player data from API
                     player_data = await self.api.get_player(player_tag)
                     print(f"API data for {player_tag}: {player_data}")
 
-                    # Extract current stats from API
+                    # Extract API career total wins and trophies
+                    total_attacks = player_data.get("attackWins", 0)  # Total career attack wins
+                    total_defenses = player_data.get("defenseWins", 0)  # Total career defense wins
                     current_trophies = player_data.get("trophies", 0)
                     townhall = player_data.get("townHallLevel", 0)
-                    attacks = player_data.get("attackWins", 0)
-                    defenses = player_data.get("defenseWins", 0)
-                    rank = player_data.get("rank", 0)  # If available
+                    rank = player_data.get("rank", 0)  # Optional per API
 
-                    # Previous stats from DB for calculation
+                    # Read previous stored values
                     prev_trophies = player.get("trophies", 0)
+
+                    # Daily Legend League stats (reset daily)
                     offense_trophies = player.get("offense_trophies", 0)
                     offense_attacks = player.get("offense_attacks", 0)
                     defense_trophies = player.get("defense_trophies", 0)
                     defense_defenses = player.get("defense_defenses", 0)
-                    prev_rank = player.get("rank", 0)
 
-                    # Calculate offense/defense trophies and counts
+                    # Calculate daily offense/defense trophies and counts
                     if current_trophies > prev_trophies:
-                        offense_trophies += (current_trophies - prev_trophies)
+                        offense_trophies += current_trophies - prev_trophies
                         offense_attacks += 1
                     elif current_trophies < prev_trophies:
-                        defense_trophies += (prev_trophies - current_trophies)
+                        defense_trophies += prev_trophies - current_trophies
                         defense_defenses += 1
 
+                    # Update database with new aggregated stats
                     updated = await player_crud.update_player_stats(
                         player_tag=player_tag,
                         trophies=current_trophies,
@@ -66,14 +67,19 @@ class BackgroundUpdater(commands.Cog):
                         defense_change=defense_trophies,
                         defense_count=defense_defenses,
                         townhall=townhall,
-                        attacks=attacks,
-                        defenses=defenses,
+                        attacks=total_attacks,
+                        defenses=total_defenses,
                         prev_trophies=prev_trophies,
-                        prev_rank=prev_rank,
+                        prev_rank=player.get("rank", 0),
                         rank=rank
                     )
 
-                    print(f"DB update for {player_tag}: {'Success' if updated else 'No change'}")
+                    print(
+                        f"DB update for {player_tag}: {'Success' if updated else 'No change'} "
+                        f"| Total Attacks: {total_attacks}, Total Defenses: {total_defenses} "
+                        f"| Daily Offense: +{offense_trophies}/{offense_attacks}, "
+                        f"Daily Defense: +{defense_trophies}/{defense_defenses}"
+                    )
 
                 except Exception as e:
                     print(f"Failed to update player {player_tag}: {str(e)}")
