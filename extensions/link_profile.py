@@ -6,7 +6,16 @@ from discord.ext import commands
 from database import player_crud
 from config.emoji import EMOJIS
 from utils.embed_helpers import create_embed
+import random
 
+# Replace these URLs with your actual hosted profile photo URLs
+PROFILE_PHOTOS = [
+    "https://example.com/profile1.png",
+    "https://example.com/profile2.png",
+    "https://example.com/profile3.png",
+    "https://example.com/profile4.png",
+    "https://example.com/profile5.png",
+]
 
 class LinkProfile(commands.Cog):
     def __init__(self, bot):
@@ -32,30 +41,39 @@ class LinkProfile(commands.Cog):
             await interaction.followup.send(embed=embed, ephemeral=True)
             return
 
+        # Select a random profile photo URL for this user (or you may choose a deterministic one)
+        random_photo_url = random.choice(PROFILE_PHOTOS)
+
         description_lines = []
         for player in linked_players:
             name = player.get("player_name", "Unknown")
             tag = player.get("player_tag", "N/A")
             discord_id = player.get("discord_id")
 
-            # Townhall emoji (only TH17 uses custom emoji, fallback otherwise)
             th_level = player.get("townhall", "?")
-            if th_level == 17:
-                th_emoji = EMOJIS.get("townhall", "🏠")  # custom emoji for TH17
-            else:
-                th_emoji = "🏠"  # fallback generic emoji
+            th_emoji = EMOJIS.get("townhall", "🏠")
 
-            # Format: "TH emoji • Name (Tag)"
-            line = f"{th_emoji} • **{name}** ({tag})\n"
+            legend_league_emoji = EMOJIS.get("legend_league", "🏆")  # Your legend league emoji
+
+            trophies = player.get("trophies", 0)
+
+            # Format line like:
+            # 1. <:th17:1409068038107697255> • **AKHIL**   |<:legend:1399752114653233322> 5321  (#8UQQL8VU8)
+            line = f"{th_emoji} • **{name}**   | {legend_league_emoji} {trophies}  ({tag})"
             description_lines.append(line)
 
         embed = create_embed(
-            title=f"Linked Accounts for {user.display_name}",
+            title=f"Player Profile - {user.display_name} ({user.id})",
             description="\n".join(description_lines),
             color=discord.Color.dark_theme()
         )
+
+        embed.set_thumbnail(url=random_photo_url)
+        embed.set_footer(text="Clash on! 🔥")
+
         await interaction.followup.send(embed=embed, ephemeral=False)
 
 
 async def setup(bot):
     await bot.add_cog(LinkProfile(bot))
+    
