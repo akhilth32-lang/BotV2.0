@@ -67,9 +67,10 @@ class LinkProfile(commands.Cog):
         )
 
         embed.set_thumbnail(url=random_photo_url)
+        
+        # Use custom fire emoji from config if present, otherwise fallback to 🔥
         fire_emoji = EMOJIS.get("fire", "🔥")
-
-embed.set_footer(text=f"Clash on! {fire_emoji}")
+        embed.set_footer(text=f"Clash on! {fire_emoji}")
 
         await interaction.followup.send(embed=embed, ephemeral=False)
 
