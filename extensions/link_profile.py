@@ -12,7 +12,10 @@ class LinkProfile(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="link_profile", description="Show all linked Clash of Clans accounts for a Discord user")
+    @app_commands.command(
+        name="link_profile",
+        description="Show all linked Clash of Clans accounts for a Discord user"
+    )
     @app_commands.describe(discord_user="Optional Discord user to view linked accounts (defaults to you)")
     async def link_profile(self, interaction: discord.Interaction, discord_user: discord.Member = None):
         await interaction.response.defer()
@@ -35,14 +38,15 @@ class LinkProfile(commands.Cog):
             tag = player.get("player_tag", "N/A")
             discord_id = player.get("discord_id")
 
-            # Townhall emoji (fallback if missing)
+            # Townhall emoji (only TH17 uses custom emoji, fallback otherwise)
             th_level = player.get("townHallLevel", "?")
-            th_emoji = EMOJIS.get(f"th{th_level}", "🏠")
+            if th_level == 17:
+                th_emoji = EMOJIS.get("townhall", "🏠")  # custom emoji for TH17
+            else:
+                th_emoji = "🏠"  # fallback generic emoji
 
-            line = (
-                f"{th_emoji} **{name}** ({tag})\n"
-                f"🔗 Linked to Discord ID: `{discord_id}`\n"
-            )
+            # Format: "TH emoji • Name (Tag)"
+            line = f"{th_emoji} • **{name}** ({tag})\n"
             description_lines.append(line)
 
         embed = create_embed(
