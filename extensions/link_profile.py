@@ -33,7 +33,7 @@ class LinkProfile(commands.Cog):
         if not linked_players:
             embed = create_embed(
                 title=f"{EMOJIS['warning']} No Linked Accounts",
-                description=f"No Clash of Clans accounts linked to {user.mention}.",
+                description=f"No Clash of Clans accounts linked to {user.mention}.({user.id})",
                 color=discord.Color.dark_theme()
             )
             await interaction.followup.send(embed=embed, ephemeral=True)
