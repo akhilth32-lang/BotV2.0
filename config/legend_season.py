@@ -49,31 +49,31 @@ LEGEND_SEASONS_2025 = [
         "duration_days": 28
     },
     {
-        "season_number": 8,
+        "season_number": 9,
         "start": datetime(2025, 8, 25, 5, 0, tzinfo=timezone.utc),
         "end": datetime(2025, 9, 29, 4, 59, tzinfo=timezone.utc),
         "duration_days": 35
     },
     {
-        "season_number": 9,
+        "season_number": 10,
         "start": datetime(2025, 9, 29, 5, 0, tzinfo=timezone.utc),
         "end": datetime(2025, 10, 27, 4, 59, tzinfo=timezone.utc),
         "duration_days": 28
     },
     {
-        "season_number": 10,
+        "season_number": 11,
         "start": datetime(2025, 10, 27, 5, 0, tzinfo=timezone.utc),
         "end": datetime(2025, 11, 24, 4, 59, tzinfo=timezone.utc),
         "duration_days": 28
     },
     {
-        "season_number": 11,
+        "season_number": 12,
         "start": datetime(2025, 11, 24, 5, 0, tzinfo=timezone.utc),
         "end": datetime(2025, 12, 29, 4, 59, tzinfo=timezone.utc),
         "duration_days": 35
     },
     {
-        "season_number": 12,
+        "season_number": 13,
         "start": datetime(2025, 12, 29, 5, 0, tzinfo=timezone.utc),
         "end": datetime(2026, 1, 26, 4, 59, tzinfo=timezone.utc),
         "duration_days": 28
