@@ -8,10 +8,12 @@ from config import emoji
 from config.legend_season import LEGEND_SEASONS_2025
 from utils.embed_helpers import create_embed
 from config.fonts import to_bold_gg_sans
+from config.countries import COUNTRIES
 from datetime import datetime, timezone
 
 PAGE_SIZE = 50  # Show 50 players per page
 MAX_PLAYERS = 200  # Limit to top 200
+
 
 def get_current_season_day():
     now = datetime.now(timezone.utc)
@@ -23,11 +25,13 @@ def get_current_season_day():
             return elapsed, total, season_month, now
     return None, None, None, now
 
+
 class LeaderboardView(discord.ui.View):
-    def __init__(self, bot, location_id="global"):
+    def __init__(self, bot, location_id="global", country_name="Global"):
         super().__init__(timeout=600)
         self.bot = bot
         self.location_id = location_id
+        self.country_name = country_name
         self.page = 1
         self.fetcher = LeaderboardFetcher()
         self.players_cache = []  # Cache all 200 players
@@ -53,15 +57,16 @@ class LeaderboardView(discord.ui.View):
             players = self.players_cache[start_index:end_index]
 
             description_lines = []
+            trophy_emoji = emoji.EMOJIS.get("trophy", "🏆")
             for idx, player in enumerate(players, start=start_index + 1):
                 name = to_bold_gg_sans(player.get("name", "Unknown"))
                 trophies = player.get("trophies", 0)
-                # ✅ Updated format: "#1 🏆 6165 𝗧𝗿ù𝗺 𝗦ò"
-                line = f"#{idx} 🏆 {trophies} {name}"
+                # ✅ Updated format: "#1 🏆 5320 | 다정한스마"
+                line = f"#{idx:<3} {trophy_emoji} {trophies} | {name}"
                 description_lines.append(line)
 
             embed = create_embed(
-                title="Global Legend League Current Leaderboard",
+                title=f"{self.country_name} Legend League Current Leaderboard",
                 description="\n".join(description_lines) if description_lines else "No data found.",
                 color=discord.Color.dark_gray()
             )
@@ -92,6 +97,7 @@ class LeaderboardView(discord.ui.View):
         embed = await self.fetch_and_build_embed()
         await interaction.response.edit_message(embed=embed, view=self)
 
+    # ✅ All buttons now black (secondary)
     @discord.ui.button(label="Previous", style=discord.ButtonStyle.secondary)
     async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         if self.page > 1:
@@ -100,7 +106,7 @@ class LeaderboardView(discord.ui.View):
         else:
             await interaction.response.send_message("You are already on the first page.", ephemeral=True)
 
-    @discord.ui.button(label="Refresh", style=discord.ButtonStyle.danger)
+    @discord.ui.button(label="Refresh", style=discord.ButtonStyle.secondary)
     async def refresh_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.players_cache = []  # Clear cache to re-fetch
         self.page = 1
@@ -120,15 +126,33 @@ class CurrentLeaderboard(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    # Build choices dynamically from COUNTRIES
+    country_choices = [
+        app_commands.Choice(name=c["name"], value=str(c["id"]))
+        for c in COUNTRIES
+    ]
+
     @app_commands.command(
         name="current_leaderboard",
-        description="Shows the current Global Legend League leaderboard (top 200, 50 per page)"
+        description="Shows the current Legend League leaderboard (top 200, 50 per page)"
     )
-    async def current_leaderboard(self, interaction: discord.Interaction):
+    @app_commands.describe(country="Select a country/local leaderboard")
+    @app_commands.choices(country=country_choices)
+    async def current_leaderboard(self, interaction: discord.Interaction, country: app_commands.Choice[str] = None):
         await interaction.response.defer(thinking=True)
-        view = LeaderboardView(self.bot)
+
+        # If no country given, default to global
+        selected_country_id = "global"
+        selected_country_name = "Global"
+
+        if country:
+            selected_country_id = country.value
+            selected_country_name = next((c["name"] for c in COUNTRIES if str(c["id"]) == country.value), "Global")
+
+        view = LeaderboardView(self.bot, location_id=selected_country_id, country_name=selected_country_name)
         embed = await view.fetch_and_build_embed()
         await interaction.followup.send(embed=embed, view=view)
+
 
 async def setup(bot):
     await bot.add_cog(CurrentLeaderboard(bot))
