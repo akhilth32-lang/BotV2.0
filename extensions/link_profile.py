@@ -7,6 +7,7 @@ from database import player_crud
 from config.emoji import EMOJIS
 from utils.embed_helpers import create_embed
 import random
+from datetime import datetime
 
 # Replace these URLs with your actual hosted profile photo URLs
 PROFILE_PHOTOS = [
@@ -39,39 +40,38 @@ class LinkProfile(commands.Cog):
             await interaction.followup.send(embed=embed, ephemeral=True)
             return
 
-        # Select a random profile photo URL for this user (or you may choose a deterministic one)
+        # Select a random profile photo URL for this user
         random_photo_url = random.choice(PROFILE_PHOTOS)
 
         description_lines = []
         for player in linked_players:
             name = player.get("player_name", "Unknown")
             tag = player.get("player_tag", "N/A")
-            discord_id = player.get("discord_id")
 
             th_level = player.get("townhall", "?")
             th_emoji = EMOJIS.get("townhall", "🏠")
 
-            legend_league_emoji = EMOJIS.get("legend_league", "🏆")  # Your legend league emoji
-
+            legend_league_emoji = EMOJIS.get("legend_league", "🏆")
             trophies = player.get("trophies", 0)
 
-            # Format line like:
-            # <:th17:1409068038107697255> • **AKHIL** | <:legend:1399752114653233322> 5321 (tag)
-            line = f"{th_emoji} • **{name}** | {legend_league_emoji} {trophies}  ({tag})"
+            # Align with spacing using f-string padding
+            line = f"{th_emoji:<3} • **{name:<15}** | {legend_league_emoji} {trophies:<5} ({tag})"
             description_lines.append(line)
+
+        # Format timestamp footer (Today at HH:MM AM/PM)
+        now = datetime.now().strftime("Today at %I:%M %p")
 
         embed = create_embed(
             title=f"Player Profile - {user.display_name}",
             description="\n".join(description_lines),
-            color=discord.Color.dark_theme()
+            color=discord.Color(0x2c2f33)
         )
 
         embed.set_thumbnail(url=random_photo_url)
-        embed.set_footer(text="Clash on! 🔥")
+        embed.set_footer(text=now)
 
         await interaction.followup.send(embed=embed, ephemeral=False)
 
 
 async def setup(bot):
     await bot.add_cog(LinkProfile(bot))
-    
