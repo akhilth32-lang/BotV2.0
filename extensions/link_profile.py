@@ -49,21 +49,21 @@ class LinkProfile(commands.Cog):
             tag = player.get("player_tag", "N/A")
 
             th_level = player.get("townhall", "?")
-            th_emoji = EMOJIS.get("townhall", "🏠")
+            th_emoji = EMOJIS.get(f"th{th_level}", "🏠")  # Example: :th17:
 
-            legend_league_emoji = EMOJIS.get("legend_league", "🏆")
-            trophies = player.get("trophies", 0)
-
-            # Align with spacing using f-string padding
-            line = f"{th_emoji:<3} • **{name:<15}** | {legend_league_emoji} {trophies:<5} ({tag})"
+            # Format: :th17: • **NAME** (#TAG)
+            line = f"{th_emoji} • **{name}** ({tag})"
             description_lines.append(line)
+
+        # Add one empty line between accounts
+        formatted_description = "\n\n".join(description_lines)
 
         # Format timestamp footer (Today at HH:MM AM/PM)
         now = datetime.now().strftime("Today at %I:%M %p")
 
         embed = create_embed(
             title=f"Player Profile - {user.display_name}",
-            description="\n".join(description_lines),
+            description=formatted_description,
             color=discord.Color(0x2c2f33)
         )
 
