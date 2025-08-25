@@ -49,9 +49,9 @@ class LinkProfile(commands.Cog):
             tag = player.get("player_tag", "N/A")
 
             th_level = player.get("townhall", "?")
-            th_emoji = EMOJIS.get(f"townhall{th_level}", "🏠")  # Example: :th17:
+            th_emoji = EMOJIS.get("townhall", "🏠")  # Always use custom townhall emoji
 
-            # Format: :th17: • **NAME** (#TAG)
+            # Format: :th: • **NAME** (#TAG)
             line = f"{th_emoji} • **{name}** ({tag})"
             description_lines.append(line)
 
