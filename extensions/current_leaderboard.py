@@ -7,7 +7,7 @@ from apis.leaderboard_fetcher import LeaderboardFetcher
 from config import emoji
 from config.legend_season import LEGEND_SEASONS_2025
 from utils.embed_helpers import create_embed
-from config.fonts import to_bold_gg_sans
+from config.fonts import to_bold_gg_sans, to_regular_gg_sans
 from config.countries import COUNTRIES
 from datetime import datetime, timezone
 
@@ -27,11 +27,12 @@ def get_current_season_day():
 
 
 class LeaderboardView(discord.ui.View):
-    def __init__(self, bot, location_id="global", country_name="Global"):
+    def __init__(self, bot, location_id="global", country_name="Global", country_code="global"):
         super().__init__(timeout=600)
         self.bot = bot
         self.location_id = location_id
         self.country_name = country_name
+        self.country_code = country_code
         self.page = 1
         self.fetcher = LeaderboardFetcher()
         self.players_cache = []  # Cache all 200 players
@@ -59,19 +60,22 @@ class LeaderboardView(discord.ui.View):
             description_lines = []
             trophy_emoji = emoji.EMOJIS.get("trophy", "🏆")
             for idx, player in enumerate(players, start=start_index + 1):
-                name = to_bold_gg_sans(player.get("name", "Unknown"))
-                trophies = player.get("trophies", 0)
-                # ✅ Updated format: "#1 🏆 5320 | 다정한스마"
-                line = f"#{idx:<3} {trophy_emoji} {trophies} | {name}"
+                rank_str = to_bold_gg_sans(f"#{idx:<3}")  # Rank bold
+                trophies = to_regular_gg_sans(str(player.get("trophies", 0)))
+                name = to_regular_gg_sans(player.get("name", "Unknown"))
+                # ✅ Format: Bold rank, rest regular
+                line = f"{rank_str} {trophy_emoji} {trophies} | {name}"
                 description_lines.append(line)
 
+            # Country emoji from emoji.COUNTRY_EMOJIS
+            country_emoji = emoji.COUNTRY_EMOJIS.get(self.country_code, "🌍")
             embed = create_embed(
-                title=f"{self.country_name} Legend League Current Leaderboard",
+                title=f"{country_emoji} {self.country_name} Legend League Leaderboard",
                 description="\n".join(description_lines) if description_lines else "No data found.",
                 color=discord.Color.dark_gray()
             )
 
-            # Footer with season info (removed page number)
+            # Footer with season info (no page number)
             elapsed, total, season_month, now = get_current_season_day()
             if elapsed and total and season_month:
                 now_local = now.astimezone()
@@ -144,12 +148,21 @@ class CurrentLeaderboard(commands.Cog):
         # If no country given, default to global
         selected_country_id = "global"
         selected_country_name = "Global"
+        selected_country_code = "global"
 
         if country:
             selected_country_id = country.value
-            selected_country_name = next((c["name"] for c in COUNTRIES if str(c["id"]) == country.value), "Global")
+            match = next((c for c in COUNTRIES if str(c["id"]) == country.value), None)
+            if match:
+                selected_country_name = match["name"]
+                selected_country_code = match.get("countryCode", "global")
 
-        view = LeaderboardView(self.bot, location_id=selected_country_id, country_name=selected_country_name)
+        view = LeaderboardView(
+            self.bot,
+            location_id=selected_country_id,
+            country_name=selected_country_name,
+            country_code=selected_country_code
+        )
         embed = await view.fetch_and_build_embed()
         await interaction.followup.send(embed=embed, view=view)
 
