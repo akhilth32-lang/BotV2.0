@@ -3,7 +3,7 @@
 # Custom emojis used by the bot, format: '<:name:id>' or '<a:name:id>' for animated
 
 EMOJIS = {
-    "townhall": "<:th17:1409068038107697255>",  # replace with your emoji ID
+    "townhall": "<:th17:1409487319211184168>",  # replace with your emoji ID
     "tick": "<:tick:1409185392292397191>",
     "cancel": "<:cancel:1409185867548852314>",
     "failed": "<:cancel:1409185867548852314>",
