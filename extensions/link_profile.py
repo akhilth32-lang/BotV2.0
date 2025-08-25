@@ -11,9 +11,9 @@ from datetime import datetime
 
 # Replace these URLs with your actual hosted profile photo URLs
 PROFILE_PHOTOS = [
-    "https://cdn.discordapp.com/attachments/1383022223043858472/1409231248232288436/profile1.png?ex=68aca05f&is=68ab4edf&hm=cb5498d78dcc18a62591bb871981af42bc4d9396f2a5db85e355045505f107d1&",
-    "https://cdn.discordapp.com/attachments/1383022223043858472/1409231248521433098/profile3.png?ex=68aca05f&is=68ab4edf&hm=fadd276f07cff3b8e57a756afe055ddd696b4895dc469839219069476b8b5399&",
-    "https://cdn.discordapp.com/attachments/1383022223043858472/1409231248844656640/profile2.png?ex=68aca05f&is=68ab4edf&hm=c74c7e104b38fb2024592f187fdbbbd754714ad078f7a7a84da162f6f84baf44&",
+    "https://cdn.discordapp.com/attachments/1383022223043858472/1409490443481251850/barbarian_baby_default_emote.png?ex=68ad91c4&is=68ac4044&hm=1afbf174a675200d818cb98ceb7c0ce1ab78a4ea2069c6ec2a245fad20636752&",
+    "https://cdn.discordapp.com/attachments/1383022223043858472/1409490443905007718/Wizard_skin_StreetMagic_icon.png?ex=68ad91c4&is=68ac4044&hm=04fd616d473d8dbbd09a952fcec4cd99abb3a7ec4bffc8893bb9aa6d8413b3e5&",
+    "https://cdn.discordapp.com/attachments/1383022223043858472/1409490444198477864/miner_classic_icon.png?ex=68ad91c4&is=68ac4044&hm=5933c01cf58571689c0bc22cd22cc609d61b34ac35dd859143ca9b766e286d8c&",
 ]
 
 class LinkProfile(commands.Cog):
@@ -49,7 +49,7 @@ class LinkProfile(commands.Cog):
             tag = player.get("player_tag", "N/A")
 
             th_level = player.get("townhall", "?")
-            th_emoji = EMOJIS.get(f"th{th_level}", "🏠")  # Example: :th17:
+            th_emoji = EMOJIS.get(f"townhall{th_level}", "🏠")  # Example: :th17:
 
             # Format: :th17: • **NAME** (#TAG)
             line = f"{th_emoji} • **{name}** ({tag})"
