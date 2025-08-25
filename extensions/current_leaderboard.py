@@ -72,7 +72,7 @@ class LeaderboardView(discord.ui.View):
             embed = create_embed(
                 title=f"{country_emoji} {self.country_name} Legend League Leaderboard",
                 description="\n".join(description_lines) if description_lines else "No data found.",
-                color=discord.Color.dark_gray()
+                color=discord.Color(0x2c2f33)
             )
 
             # Footer with season info (no page number)
