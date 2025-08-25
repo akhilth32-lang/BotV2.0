@@ -56,16 +56,16 @@ class LeaderboardView(discord.ui.View):
             for idx, player in enumerate(players, start=start_index + 1):
                 name = to_bold_gg_sans(player.get("name", "Unknown"))
                 trophies = player.get("trophies", 0)
-                line = f"{idx}. {name} 🏆 {trophies}"
+                line = f"#{idx} 🏆 {trophies} {name}"
                 description_lines.append(line)
 
             embed = create_embed(
                 title="Global Legend League Current Leaderboard",
                 description="\n".join(description_lines) if description_lines else "No data found.",
-                color=discord.Color.dark_gray()
+                color=discord.Color.black()  # Set default embed color to black
             )
 
-            # Footer with season info
+            # Footer with season info (removed page number)
             elapsed, total, season_month, now = get_current_season_day()
             if elapsed and total and season_month:
                 now_local = now.astimezone()
@@ -77,7 +77,7 @@ class LeaderboardView(discord.ui.View):
             else:
                 footer_str = f"Date unknown | {datetime.now().strftime('%m/%d/%Y %I:%M %p')}"
 
-            embed.set_footer(text=f"{footer_str} • Page {self.page}/{(len(self.players_cache) // PAGE_SIZE)}")
+            embed.set_footer(text=footer_str)
             return embed
 
         except Exception as e:
@@ -91,7 +91,7 @@ class LeaderboardView(discord.ui.View):
         embed = await self.fetch_and_build_embed()
         await interaction.response.edit_message(embed=embed, view=self)
 
-    @discord.ui.button(label="Previous", style=discord.ButtonStyle.secondary)
+    @discord.ui.button(label="Previous", style=discord.ButtonStyle.secondary)  # Black
     async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         if self.page > 1:
             self.page -= 1
@@ -99,13 +99,13 @@ class LeaderboardView(discord.ui.View):
         else:
             await interaction.response.send_message("You are already on the first page.", ephemeral=True)
 
-    @discord.ui.button(label="Refresh", style=discord.ButtonStyle.danger)
+    @discord.ui.button(label="Refresh", style=discord.ButtonStyle.secondary)  # Black
     async def refresh_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.players_cache = []  # Clear cache to re-fetch
         self.page = 1
         await self.update_message(interaction)
 
-    @discord.ui.button(label="Next", style=discord.ButtonStyle.secondary)
+    @discord.ui.button(label="Next", style=discord.ButtonStyle.secondary)  # Black
     async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         max_pages = (MAX_PLAYERS // PAGE_SIZE)
         if self.page < max_pages:
