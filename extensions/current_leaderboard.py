@@ -62,7 +62,7 @@ class LeaderboardView(discord.ui.View):
             embed = create_embed(
                 title="Global Legend League Current Leaderboard",
                 description="\n".join(description_lines) if description_lines else "No data found.",
-                color=discord.Color.black()  # Set default embed color to black
+                color=discord.Color.from_rgb(0, 0, 0)  # ✅ Fixed black color
             )
 
             # Footer with season info (removed page number)
