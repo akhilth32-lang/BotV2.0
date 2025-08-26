@@ -8,24 +8,36 @@ class FetchIDs(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="fetch_ids", description="Fetch all slash command IDs in this server")
+    @app_commands.command(name="fetch_ids", description="Fetch all slash command IDs (global & this server)")
     async def fetch_ids(self, interaction: discord.Interaction):
-        guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message("❌ This can only be used in a server.", ephemeral=True)
-            return
-
-        commands_list = await self.bot.tree.fetch_commands(guild=guild)
-        if not commands_list:
-            await interaction.response.send_message("⚠️ No slash commands found in this server.", ephemeral=True)
-            return
+        await interaction.response.defer(ephemeral=True)
 
         lines = []
-        for cmd in commands_list:
-            lines.append(f"</{cmd.name}:{cmd.id}> (`{cmd.id}`)")
 
-        message = "📋 **Slash Commands in this server:**\n" + "\n".join(lines)
-        await interaction.response.send_message(message, ephemeral=True)
+        # Fetch global commands
+        global_cmds = await self.bot.tree.fetch_commands()
+        if global_cmds:
+            lines.append("🌍 **Global Slash Commands:**")
+            for cmd in global_cmds:
+                lines.append(f"</{cmd.name}:{cmd.id}> (`{cmd.id}`)")
+        else:
+            lines.append("⚠️ No global commands found.")
+
+        # Fetch guild commands (server-specific)
+        if interaction.guild:
+            guild_cmds = await self.bot.tree.fetch_commands(guild=interaction.guild)
+            if guild_cmds:
+                lines.append(f"\n🏠 **Server Slash Commands ({interaction.guild.name}):**")
+                for cmd in guild_cmds:
+                    lines.append(f"</{cmd.name}:{cmd.id}> (`{cmd.id}`)")
+            else:
+                lines.append("\n⚠️ No server commands found.")
+        else:
+            lines.append("\n❌ Must be used inside a server to fetch guild commands.")
+
+        message = "\n".join(lines)
+        await interaction.followup.send(message, ephemeral=True)
+
 
 async def setup(bot):
     await bot.add_cog(FetchIDs(bot))
