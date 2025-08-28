@@ -31,6 +31,7 @@ async def add_linked_player(discord_id: int, player_tag: str, player_name: str, 
         "defenseWins": 0,
         "prev_trophies": trophies,
         "prev_rank": 0,
+        "prev_attack_wins": 0,  # ✅ NEW FIELD
         "rank": 0,
         "last_reset": datetime.datetime.utcnow().date().isoformat(),
         "last_updated": datetime.datetime.utcnow(),
@@ -62,7 +63,7 @@ async def update_player_stats(player_tag: str, trophies: int, offense_change: in
                               defense_change: int, defense_count: int, townhall: Optional[int] = None,
                               attacks: Optional[int] = None, defenses: Optional[int] = None,
                               prev_trophies: Optional[int] = None, prev_rank: Optional[int] = None,
-                              rank: Optional[int] = None):
+                              rank: Optional[int] = None, prev_attack_wins: Optional[int] = None):
     """Update player stats and additional info."""
     player_tag = player_tag.upper()
     update_fields = {
@@ -86,6 +87,8 @@ async def update_player_stats(player_tag: str, trophies: int, offense_change: in
         update_fields["prev_rank"] = prev_rank
     if rank is not None:
         update_fields["rank"] = rank
+    if prev_attack_wins is not None:  # ✅ NEW FIELD
+        update_fields["prev_attack_wins"] = prev_attack_wins
 
     update = {"$set": update_fields}
     result = await players_collection.update_one({"player_tag": player_tag}, update)
@@ -119,6 +122,7 @@ async def fetch_and_save_player(api, discord_id: int, player_tag: str):
         "defense_trophies": 0,
         "prev_trophies": data.get("trophies", 0),
         "prev_rank": 0,
+        "prev_attack_wins": 0,  # ✅ NEW FIELD
         "rank": 0,
         "last_reset": datetime.datetime.utcnow().date().isoformat(),
         "last_updated": datetime.datetime.utcnow(),
