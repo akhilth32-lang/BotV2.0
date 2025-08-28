@@ -142,7 +142,7 @@ class Leaderboard(commands.Cog):
 
         season_number, current_day = get_current_legend_season_and_day(legend_season.LEGEND_SEASONS_2025)
         total_days = next(
-            (season["duration_days"] for season in legend_season.LEGEND_SEASONS_2025 if season["season_number"] == season_number),
+            (season["duration_days"] for season in legend_season.LEGEND_SEASONS_2025 if s["season_number"] == season_number),
             None
         )
 
