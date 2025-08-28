@@ -43,7 +43,6 @@ class BackgroundUpdater(commands.Cog):
 
                     # Read previous stored values
                     prev_trophies = player.get("trophies", 0)
-                    prev_attack_wins = player.get("prev_attack_wins", total_attacks)  # NEW FIELD
 
                     # Daily Legend League stats (reset daily)
                     offense_trophies = player.get("offense_trophies", 0)
@@ -51,15 +50,10 @@ class BackgroundUpdater(commands.Cog):
                     defense_trophies = player.get("defense_trophies", 0)
                     defense_defenses = player.get("defense_defenses", 0)
 
-                    # ✅ NEW OFFENSE CALCULATION LOGIC
-                    if total_attacks > prev_attack_wins:
-                        attack_diff = total_attacks - prev_attack_wins
-                        trophy_gain = current_trophies - prev_trophies
-                        if trophy_gain > 0:
-                            offense_trophies += trophy_gain
-                        offense_attacks += attack_diff
-
-                    # Defense calculation (unchanged)
+                    # Calculate daily offense/defense trophies and counts
+                    if current_trophies > prev_trophies:
+                        offense_trophies += current_trophies - prev_trophies
+                        offense_attacks += 1
                     elif current_trophies < prev_trophies:
                         defense_trophies += prev_trophies - current_trophies
                         defense_defenses += 1
@@ -77,8 +71,7 @@ class BackgroundUpdater(commands.Cog):
                         defenses=total_defenses,
                         prev_trophies=prev_trophies,
                         prev_rank=player.get("rank", 0),
-                        rank=rank,
-                        prev_attack_wins=total_attacks  # ✅ SAVE for next run
+                        rank=rank
                     )
 
                     print(
@@ -123,3 +116,5 @@ class BackgroundUpdater(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(BackgroundUpdater(bot))
+
+    
