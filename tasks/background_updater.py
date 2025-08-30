@@ -1,3 +1,5 @@
+# tasks/background_updater.py
+
 import asyncio
 from discord.ext import commands, tasks
 from database import player_crud
@@ -43,6 +45,8 @@ class BackgroundUpdater(commands.Cog):
 
                     # Read previous stored values
                     prev_trophies = player.get("trophies", 0)
+                    prev_offense_attacks = player.get("offense_attacks", 0)
+                    prev_offense_attacks_field = player.get("prev_offense_attacks", 0)
 
                     # Daily Legend League stats (reset daily)
                     offense_trophies = player.get("offense_trophies", 0)
@@ -50,15 +54,22 @@ class BackgroundUpdater(commands.Cog):
                     defense_trophies = player.get("defense_trophies", 0)
                     defense_defenses = player.get("defense_defenses", 0)
 
-                    # Calculate daily offense/defense trophies and counts
+                    # Calculate offense attacks difference based on total career attack wins from API
+                    attack_win_diff = total_attacks - prev_offense_attacks_field
+                    if attack_win_diff < 0:
+                        # Possible reset or anomaly in API counter, fallback to total_attacks
+                        attack_win_diff = total_attacks
+
+                    offense_attacks += attack_win_diff
+
+                    # Calculate daily offense/defense trophies
                     if current_trophies > prev_trophies:
                         offense_trophies += current_trophies - prev_trophies
-                        offense_attacks += 1
                     elif current_trophies < prev_trophies:
                         defense_trophies += prev_trophies - current_trophies
-                        defense_defenses += 1
+                        defense_defenses += 1  # Defense count unchanged for this update, defensive difference not implemented
 
-                    # Update database with new aggregated stats
+                    # Update database with new aggregated stats including previous offense attacks count
                     updated = await player_crud.update_player_stats(
                         player_tag=player_tag,
                         trophies=current_trophies,
@@ -71,7 +82,8 @@ class BackgroundUpdater(commands.Cog):
                         defenses=total_defenses,
                         prev_trophies=prev_trophies,
                         prev_rank=player.get("rank", 0),
-                        rank=rank
+                        rank=rank,
+                        prev_offense_attacks=total_attacks  # <-- Store current career attacks as previous for next cycle
                     )
 
                     print(
@@ -116,5 +128,4 @@ class BackgroundUpdater(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(BackgroundUpdater(bot))
-
     
