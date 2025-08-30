@@ -25,6 +25,7 @@ async def add_linked_player(discord_id: int, player_tag: str, player_name: str, 
         "trophies": trophies,
         "offense_trophies": 0,
         "offense_attacks": 0,
+        "prev_offense_attacks": 0,  # <-- Added field
         "defense_trophies": 0,
         "defense_defenses": 0,
         "attackWins": 0,
@@ -58,11 +59,16 @@ async def unlink_player(player_tag: str, discord_id: Optional[int] = None):
     return result.modified_count > 0
 
 
+async def get_prev_offense_attacks(player_tag: str):
+    player = await players_collection.find_one({"player_tag": player_tag})
+    return player.get("offense_attacks", 0) if player else 0
+
+
 async def update_player_stats(player_tag: str, trophies: int, offense_change: int, offense_count: int,
                               defense_change: int, defense_count: int, townhall: Optional[int] = None,
                               attacks: Optional[int] = None, defenses: Optional[int] = None,
                               prev_trophies: Optional[int] = None, prev_rank: Optional[int] = None,
-                              rank: Optional[int] = None):
+                              rank: Optional[int] = None, prev_offense_attacks: Optional[int] = None):
     """Update player stats and additional info."""
     player_tag = player_tag.upper()
     update_fields = {
@@ -86,6 +92,8 @@ async def update_player_stats(player_tag: str, trophies: int, offense_change: in
         update_fields["prev_rank"] = prev_rank
     if rank is not None:
         update_fields["rank"] = rank
+    if prev_offense_attacks is not None:
+        update_fields["prev_offense_attacks"] = prev_offense_attacks  # <-- Track previous offense attacks
 
     update = {"$set": update_fields}
     result = await players_collection.update_one({"player_tag": player_tag}, update)
@@ -114,6 +122,7 @@ async def fetch_and_save_player(api, discord_id: int, player_tag: str):
         "attackWins": 0,
         "defenseWins": 0,
         "offense_attacks": 0,
+        "prev_offense_attacks": 0,  # <-- Added field
         "offense_trophies": 0,
         "defense_defenses": 0,
         "defense_trophies": 0,
@@ -133,4 +142,4 @@ async def fetch_and_save_player(api, discord_id: int, player_tag: str):
     )
 
     return player_doc
-    
+        
