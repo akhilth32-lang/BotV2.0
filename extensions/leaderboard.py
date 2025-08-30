@@ -11,7 +11,7 @@ from config.fonts import to_bold_gg_sans
 from utils.time_helpers import get_current_legend_season_and_day
 import datetime
 
-LEADERBOARD_PAGE_SIZE = 20  # Keeping original page size
+LEADERBOARD_PAGE_SIZE = 20
 
 class LeaderboardView(discord.ui.View):
     def __init__(self, bot, leaderboard_name, color, day, season_number, total_days):
@@ -24,7 +24,7 @@ class LeaderboardView(discord.ui.View):
         self.season_number = season_number
         self.total_days = total_days
         self.players = []
-    
+
     async def load_players(self):
         current_season, current_day = get_current_legend_season_and_day(legend_season.LEGEND_SEASONS_2025)
         target_day = self.day if self.day > 0 else current_day
@@ -50,7 +50,11 @@ class LeaderboardView(discord.ui.View):
             tag = player.get("player_tag", "N/A")
             trophies = player.get("trophies", 0)
             offense_change = player.get("offense_trophies", 0)
-            offense_attacks = player.get("offense_attacks", 0)
+
+            current_offense_attacks = player.get("offense_attacks", 0)
+            # Display total daily offense attacks directly to avoid zero display issue
+            offense_attack_diff = current_offense_attacks
+
             defense_change = player.get("defense_trophies", 0)
             defense_defends = player.get("defense_defenses", 0)
 
@@ -58,18 +62,13 @@ class LeaderboardView(discord.ui.View):
             offense_emoji = EMOJIS.get("offense", "⚔️")
             defense_emoji = EMOJIS.get("defense", "🛡️")
 
-            # === FIXED FORMATTING ===
-            # First line: rank + player name + tag
             line1 = f"{idx}. {name} ({tag})"
-
-            # Second line: trophies, offense, defense neatly aligned
             line2 = (
                 f"{trophy_emoji} {trophies} | "
-                f"{offense_emoji} `{offense_change:+}/{offense_attacks}` | "
+                f"{offense_emoji} `{offense_change:+}/{offense_attack_diff}` | "
                 f"{defense_emoji} `-{abs(defense_change)}/{defense_defends}`"
             )
 
-            # Add half-space (blank line) between players
             description_lines.append(f"{line1}\n{line2}\n")
 
         leaderboard_emoji = EMOJIS.get("leaderboard", "")
@@ -98,7 +97,7 @@ class LeaderboardView(discord.ui.View):
         embed.set_footer(text=footer_text)
         return embed
 
-    @discord.ui.button(label="Previous", style=discord.ButtonStyle.secondary)  # Black
+    @discord.ui.button(label="Previous", style=discord.ButtonStyle.secondary)
     async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         if self.current_page > 0:
             self.current_page -= 1
@@ -107,7 +106,7 @@ class LeaderboardView(discord.ui.View):
         else:
             await interaction.response.send_message("Already at the first page.", ephemeral=True)
 
-    @discord.ui.button(label="Next", style=discord.ButtonStyle.secondary)  # Black
+    @discord.ui.button(label="Next", style=discord.ButtonStyle.secondary)
     async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         max_page = (len(self.players) - 1) // LEADERBOARD_PAGE_SIZE
         if self.current_page < max_page:
@@ -117,7 +116,7 @@ class LeaderboardView(discord.ui.View):
         else:
             await interaction.response.send_message("Already at the last page.", ephemeral=True)
 
-    @discord.ui.button(label="Refresh", style=discord.ButtonStyle.secondary)  # Black
+    @discord.ui.button(label="Refresh", style=discord.ButtonStyle.secondary)
     async def refresh_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.load_players()
         self.current_page = 0
