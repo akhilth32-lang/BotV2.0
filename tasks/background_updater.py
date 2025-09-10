@@ -102,7 +102,7 @@ class BackgroundUpdater(commands.Cog):
     @tasks.loop(minutes=1.0)
     async def reset_offense_defense(self):
         now = datetime.datetime.utcnow() + datetime.timedelta(hours=5, minutes=30)  # IST timezone
-        if now.hour == 10 and now.minute == 44:
+        if now.hour == 10 and now.minute == 50:
             if self.last_reset_date != now.date():
                 print(f"Performing daily reset of offense/defense stats at {now.isoformat()}")
                 from database.database import players_collection
